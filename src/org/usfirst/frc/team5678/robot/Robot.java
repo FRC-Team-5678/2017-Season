@@ -26,16 +26,21 @@ import java.io.IOException;
  * creating this project, you must also update the manifest file in the resource
  * directory.
  */
+
+
+
 public class Robot extends IterativeRobot {
 	RobotDrive myRobot = new RobotDrive(0, 1);   //left motor channel, right motor channel
 	
 	Timer timer = new Timer();
-	final String defaultAuto = "Default";
-	final String segment1DriveStraight = "Segment1 - Drive Straight";
-	final String segment2TurnTowardsGearPeg = "Segment2 -Turn Towards Gear Peg";
-	final String segment3ApproachGearPeg = "Segment3 -Approach Gear Peg";
-	final String allSegmentsFromLeftSide = "all segments starting from left side";
-	final String allSegmentsFromRightSide = "all segments starting from right side";
+	final String optiondefaultAuto = "Default";
+	final String optionDriveStraight = "Drive Straight";
+	final String optionTurn = "Turn";
+	final String optionApproachTarget = "Approach Target";
+	final String optionAutoLeftSide = "autonomous  mode starting from left side";
+	final String optionAutoRightSide = "autonomous mode starting from right side";
+	
+	String tst;
 	String autoSelected;
 	SendableChooser<String> chooser = new SendableChooser<>();
 	Encoder rightCimCoder;
@@ -44,22 +49,12 @@ public class Robot extends IterativeRobot {
 	PIDController pidControllerRight;
 	Talon leftMotor;
 	Talon rightMotor;
+	String autoSelectedFromDD;
+	int loopCounter;
 
-	
-	public class PathToPoint{
-		double timeLimit;
-		double encoderLimit;
-		boolean PIDControllerEnabled;
-		double feedForward;
-		double Kp;
-		double Ki;
-		double Kd;
-		double Kf;
-	}
-	
-	PathToPoint[] driveStraight = new PathToPoint[3];
-	PathToPoint[] turnTowardsGearPeg = new PathToPoint[3];
-	PathToPoint[] approachGearPeg = new PathToPoint[3];
+	Trajectory driveStraight = new Trajectory("DriveStraight");
+	Trajectory turnTowardsGearPeg =  new Trajectory("turnTowardsGearPeg");
+	Trajectory approachGearPeg = new Trajectory("approachGearPeg");
 	
 // Each trajectory is comprised of path segments
 	
@@ -75,36 +70,41 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void robotInit() {
 		//chooser.addDefault("Default Auto", defaultAuto);
-		chooser.addObject("Segment1 - Drive Straight", segment1DriveStraight);
-		chooser.addObject("Segment2 - Turn Towards Gear Peg", segment2TurnTowardsGearPeg);
-		chooser.addObject("Segment3 - Approach Gear Peg", segment3ApproachGearPeg);
+		//chooser.addObject("Drive Straight", optionDriveStraight);
+		//chooser.addObject("Turn", optionDriveStraight);
+		//chooser.addObject("Approach Gear Peg", optionApproachTarget);
 		
-		SmartDashboard.putData("Auto choices", chooser);
+		//SmartDashboard.putData("Auto choices", chooser);
+		
+		
+		//SmartDashboard.getString("DB String 5", tst );
+		//SmartDashboard.putString("DB String 1", tst);
+		System.out.println(tst);
 		myRobot.setExpiration(0.2);
-		
+
 		//pidControllerRight = new PIDController(.1, .1, .1, .1, rightCimCoder, rightMotor);
 		//pidControllerLeft = new PIDController(.1, .1, .1, .1, leftCimCoder, leftMotor);
 		
 		
-		driveStraight[0].timeLimit = 1;
-		driveStraight[1].timeLimit = 2;
-		driveStraight[2].timeLimit = 3;
-		driveStraight[0].feedForward = .5;
-		driveStraight[1].feedForward = 1;
-		driveStraight[2].feedForward = .5;
-		driveStraight[0].PIDControllerEnabled = false;
-		driveStraight[0].Kd = 0;
-		driveStraight[0].Kp = .5;
-		driveStraight[0].Ki = .1;
-		driveStraight[0].Kf = .5;
-		driveStraight[1].Kd = 0;
-		driveStraight[1].Kp = .5;
-		driveStraight[1].Ki = .1;
-		driveStraight[1].Kf = .5;
-		driveStraight[2].Kd = 0;
-		driveStraight[2].Kp = .5;
-		driveStraight[2].Ki = .1;
-		driveStraight[2].Kf = .5;
+		driveStraight.segments[0].timeLimit = 1;
+		driveStraight.segments[1].timeLimit = 2;
+		driveStraight.segments[2].timeLimit = 3;
+		driveStraight.segments[0].feedForward = .5;
+		driveStraight.segments[1].feedForward = 1;
+		driveStraight.segments[2].feedForward = .5;
+		driveStraight.segments[0].PIDControllerEnabled = false;
+		driveStraight.segments[0].Kd = 0;
+		driveStraight.segments[0].Kp = .5;
+		driveStraight.segments[0].Ki = .1;
+		driveStraight.segments[0].Kf = .5;
+		driveStraight.segments[1].Kd = 0;
+		driveStraight.segments[1].Kp = .5;
+		driveStraight.segments[1].Ki = .1;
+		driveStraight.segments[1].Kf = .5;
+		driveStraight.segments[2].Kd = 0;
+		driveStraight.segments[2].Kp = .5;
+		driveStraight.segments[2].Ki = .1;
+		driveStraight.segments[2].Kf = .5;
 		
 
 		
@@ -140,15 +140,32 @@ public class Robot extends IterativeRobot {
 	public void autonomousInit() {
 		timer.reset();
 		timer.start();
+		loopCounter = 0;
 	}
 	
 	
-	void segment1DriveStraight(){  
-		if (timer.get() < driveStraight[0].timeLimit) {
+	void DriveStraightFeedback(){  
+    int encoderValue;
+		if ((encoderValue < driveStraight.segments[0].rightEncoderLimit) && (timer.get() < driveStraight.segments[0].timeLimit)) {
+			pidControllerRight.setPID(driveStraight.segments[0].Kp, driveStraight.segments[0].Ki, driveStraight.segments[0].Kd);
+			pidControllerLeft.setPID(driveStraight.segments[0].Kp, driveStraight.segments[0].Ki, driveStraight.segments[0].Kd);
+		} else if (timer.get() < driveStraight.segments[1].timeLimit){
+			pidControllerRight.setPID(driveStraight.segments[1].Kp, driveStraight.segments[1].Ki, driveStraight.segments[1].Kd);
+			pidControllerLeft.setPID(driveStraight.segments[1].Kp, driveStraight.segments[1].Ki, driveStraight.segments[1].Kd);
+		} else { 
+			pidControllerRight.setPID(driveStraight.segments[2].Kp, driveStraight.segments[2].Ki, driveStraight.segments[2].Kd);
+			pidControllerLeft.setPID(driveStraight.segments[2].Kp, driveStraight.segments[2].Ki, driveStraight.segments[2].Kd);
+			
+			myRobot.drive(0.0, 0.0); // stop robot
+		}
+	}
+	
+	void DriveStraight(){  
+		if (timer.get() < driveStraight.segments[0].timeLimit) {
 			SmartDashboard.putString("drive power", "0.5 ");
 			SmartDashboard.putString("curve", "0 ");
 			myRobot.drive(-0.5, 0.0); // drive forwards half speed
-		} else if (timer.get() < driveStraight[1].timeLimit){
+		} else if (timer.get() < driveStraight.segments[1].timeLimit){
 			SmartDashboard.putString("drive power", "0.2 ");
 			SmartDashboard.putString("curve", "0 ");
 			myRobot.drive(-0.2, 0.0); // slow down for .25 second
@@ -159,7 +176,7 @@ public class Robot extends IterativeRobot {
 		}
 	}
 	
-	void segment2TurnTowardsGearPeg()
+	void Turn()
 	{
 		if (timer.get() < .5) {
 			myRobot.drive(-0.4, 0.5); // drive forwards half speed
@@ -172,8 +189,9 @@ public class Robot extends IterativeRobot {
 		}
 	}
 	
-	void segment3ApproachGearPeg()
+	void ApproachTarget()
 	{
+		loopCounter++;
 		testPixyi2c();
 		if (timer.get() < .5) {
 			myRobot.drive(-0.4, 0.0); // drive forwards half speed
@@ -195,32 +213,34 @@ public class Robot extends IterativeRobot {
 	/**
 	 * This function is called periodically during autonomous
 	 */
-	@SuppressWarnings("deprecation")
+	//@SuppressWarnings("deprecation")
 	@Override
 	public void autonomousPeriodic() {
-		autoSelected = chooser.getSelected();
+		//autoSelected = chooser.getSelected();
+		autoSelectedFromDD = SmartDashboard.getString("DB/String 0", "Default");
+		SmartDashboard.putString("auto Selected from DD", autoSelectedFromDD);
 		System.out.println("Auto selected: " + autoSelected);
-		SmartDashboard.putString("mode", autoSelected);
-		SmartDashboard.putDouble("time", timer.get()); 
+		//SmartDashboard.putString("mode", autoSelected);
+		//SmartDashboard.putDouble("time", timer.get()); 
+		SmartDashboard.putNumber("timeNumber", timer.get());
 
-
-		switch (autoSelected) {
-		case segment1DriveStraight:
-			segment1DriveStraight();
+		switch (autoSelectedFromDD) {
+		case "DriveStraight":
+			DriveStraight();
 			break;
-		case segment2TurnTowardsGearPeg:
-			segment2TurnTowardsGearPeg();
+		case "Turn":
+			Turn();
 			break;
-		case segment3ApproachGearPeg:
-			segment3ApproachGearPeg();
+		case "ApproachTarget":
+			ApproachTarget();
 			break;
-		case defaultAuto:
+		case "Default":
 		default:
 			// Put default auto code here
-			myRobot.drive(0.0, 0.0); 
-			System.out.println("no auto mode selected!");
-			break;
+			System.out.println("invalid auto mode");
+			myRobot.drive(0.0, 0.0);
 		}
+		
 	}
 
 	static double time;
@@ -262,47 +282,29 @@ public class Robot extends IterativeRobot {
 	
 	public static I2C pixy;
 	
-	public class pixyObjectBlock{  
-		int xPosition;
-		int yPosition;
-		int width;
-		int height;	
-		int signatureNumber;
-		int checksum;
-		
-		pixyObjectBlock(){
-			xPosition = 0;
-			yPosition = 0;
-			width = 0;
-			height = 0;	
-			signatureNumber = -1;
-			checksum = 0;	
-		}
-		
-		void outputToSmartDashboard()
-		{
 			
-		}
-		
-		
-	}
 	
-	@SuppressWarnings("deprecation")
+	//@SuppressWarnings("deprecation")
 	public static void testPixyi2c(){
 		
 		// set the number of bytes to get from the pixycam each read cycle.  The pixycam outputs 14 byte blocks
 		// of data with an extra 2 bytes between frames per Object Block Format Figure
 		int maxBytes=64;
+		int targetIndex = 0;
+		int _checksum = 0;
+		final byte PIXY_START_WORD_LSB=0x55;
+		final byte PIXY_START_WORD_MSB=(byte) 0xaa;
+		final byte PIXY_START_WORDX_LSB=(byte) 0xaa;
+		final byte PIXY_START_WORDX_MSB=0x55;
 
 
 		// declare the object data variables
 		pixyObjectBlock[] pixyObjects = new pixyObjectBlock[6];
-		int targetIndex = 0;
-		String hex;
-	
 		
-
-
+		for (int i=0; i < 6; i++){
+			pixyObjects[i] = new pixyObjectBlock();
+		}
+		
 		// declare a byte array to store the data from the camera
 		byte[] pixyData = new byte[maxBytes];
 		pixy = new I2C(Port.kOnboard, 0x54);
@@ -310,11 +312,7 @@ public class Robot extends IterativeRobot {
 		boolean dataAllZeros = false;
 
 		pixy.readOnly(pixyData, 64);   
-/*		SmartDashboard.putNumber("pixyData0", pixyData[0]);
-		SmartDashboard.putNumber("pixyData1", pixyData[1]);
-		SmartDashboard.putNumber("pixyData2", pixyData[2]);
-		SmartDashboard.putNumber("pixyData3", pixyData[3]);*/
-		SmartDashboard.putNumber("length", pixyData.length);
+		
 		/* is there buffering at the pixy (or roboRIO), or will we recieve fresh (recent completed) frame data?
 		//assumptions:  neither pixy nor roboRIO buffer I2C data.  When the readOnly method is executing, the roboRIO
 		// requests data from the pixy and waits until 64 bytes are delivered.  The pixy responds with current data, and if
@@ -328,37 +326,58 @@ public class Robot extends IterativeRobot {
 		// i is incremented until the first two bytes (i and i+1) match the sync bytes (0x55 and 0xaa)
 		// Note:  In Java, the and operation with 0xff is key to matching the 0xaa because the byte array is
 //		           automatically filled by Java with leading 1s that make the number -86
-			while (!((pixyData[i] & 0xff) == 0x55) && ((pixyData[i + 1] & 0xff) == 0xaa) && i < 50) { i++; }
+			while (!((pixyData[i] & 0xff) == PIXY_START_WORD_LSB) && ((pixyData[i + 1] & 0xff) == PIXY_START_WORD_MSB) && i < 50) { i++; }
 			i++;
 		/* check if the index is getting so high that you cant align and see an entire frame.  Ensure it isnt */
 			if (i > 50) i = 49;
 		// parse away the second set of sync bytes
-			
-			SmartDashboard.putNumber("i before target loop", i);
-         while ((targetIndex < 2) && (!dataAllZeros)){
+		SmartDashboard.putNumber("loopCounter", loopCounter);
+		SmartDashboard.putNumber("i before target loop", i);
+        while ((targetIndex < 2) && (!dataAllZeros)){
              	 
-             while (!((pixyData[i] & 0xff) == 0x55) && ((pixyData[i + 1] & 0xff) == 0xaa) && i < 50) { i++; }
+             while (!((pixyData[i] & 0xff) == PIXY_START_WORD_LSB) && ((pixyData[i + 1] & 0xff) == PIXY_START_WORD_MSB) && i < 50) { i++; }
              SmartDashboard.putNumber("i inside target loop", i);
              SmartDashboard.putNumber("pixyData[i]", pixyData[i]);
         	 SmartDashboard.putNumber("pixyData[i+1]", pixyData[i+1]);
         	 SmartDashboard.putNumber("pixyData[i+2]", pixyData[i+2]);
         	 SmartDashboard.putNumber("pixyData[i+3]", pixyData[i+3]);
-             pixyObjects[targetIndex].checksum = (char) (((pixyData[i + 3] & 0xff) << 8) | (pixyData[i + 2] & 0xff));
+        	 SmartDashboard.putNumber("pixyData[i+4]", pixyData[i+4]);
+        	 SmartDashboard.putNumber("pixyData[i+5]", pixyData[i+5]);
+        	 SmartDashboard.putNumber("pixyData[i+6]", pixyData[i+6]);
+        	 SmartDashboard.putNumber("pixyData[i+7]", pixyData[i+7]);
+        	 SmartDashboard.putNumber("pixyData[i+8]", pixyData[i+8]);
+        	 SmartDashboard.putNumber("pixyData[i+9]", pixyData[i+9]);
+        	 SmartDashboard.putNumber("pixyData[i+10]", pixyData[i+10]);
+        	 SmartDashboard.putNumber("pixyData[i+11]", pixyData[i+11]);
+        	 SmartDashboard.putNumber("pixyData[i+12]", pixyData[i+12]);
+        	 SmartDashboard.putNumber("pixyData[i+13]", pixyData[i+13]);
+        	 SmartDashboard.putNumber("pixyData[i+14]", pixyData[i+14]);
+        
+             //SmartDashboard.putNumber("i inside target loop", i);
+        	 pixyObjects[targetIndex].checksum = (char) (((pixyData[i + 3] & 0xff) << 8) | (pixyData[i + 2] & 0xff));
+        	 SmartDashboard.putNumber("checksum", pixyObjects[targetIndex].checksum);
              if (pixyObjects[targetIndex].checksum > 0)
              {
-			 pixyObjects[targetIndex].signatureNumber = (char) (((pixyData[i + 5] & 0xff) << 8) | (pixyData[i + 4] & 0xff));
+             SmartDashboard.putNumber("checksum > 0 for targetIndex=", targetIndex);
+			 pixyObjects[targetIndex].signatureNumber = (char) (pixyData[i + 4] & 0xff);
 			 pixyObjects[targetIndex].xPosition = (char) (((pixyData[i + 7] & 0xff) << 8) | (pixyData[i + 6] & 0xff));
 	         pixyObjects[targetIndex].yPosition = (char) (((pixyData[i + 9] & 0xff) << 8) | (pixyData[i + 8] & 0xff));
 	         pixyObjects[targetIndex].width = (char) (((pixyData[i + 11] & 0xff) << 8) | (pixyData[i + 10] & 0xff));
 	         pixyObjects[targetIndex].height = (char) (((pixyData[i + 13] & 0xff) << 8) | (pixyData[i + 12] & 0xff));
+	         calculatedChecksum = pixyObjects[targetIndex].signatureNumber 
+	        		 + pixyObjects[targetIndex].xPosition
+	        		 + pixyObjects[targetIndex].yPosition
+	        		 + pixyObjects[targetIndex].width
+	        		 + pixyObjects[targetIndex].height;
+	         SmartDashboard.putNumber("calculated checksum", calculatedChecksum);
+	         if (calculateChecksum == pixyObjects[targetIndex].checksum)
+	         {
+	         SmartDashboard.putBoolean
+	         //SmartDashboard.putNumber("targetIndex", targetIndex);
+	         pixyObjects[targetIndex].outputToSmartDashboard();
 	         
-	         SmartDashboard.putNumber("Target", targetIndex);
-	         SmartDashboard.putNumber("signature", pixyObjects[targetIndex].signatureNumber);
-	         SmartDashboard.putNumber("xPosition", pixyObjects[targetIndex].xPosition);
-	         SmartDashboard.putNumber("yPosition", pixyObjects[targetIndex].yPosition);
-	         SmartDashboard.putNumber("width", pixyObjects[targetIndex].width);
-	         SmartDashboard.putNumber("height", pixyObjects[targetIndex].height);
-	         ++targetIndex;
+	         ++targetIndex; 
+	 
              }
              else 
             	 {
