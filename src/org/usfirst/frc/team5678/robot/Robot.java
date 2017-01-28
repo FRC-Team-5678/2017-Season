@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.interfaces.Gyro;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.internal.HardwareTimer;
@@ -13,6 +14,7 @@ import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -30,7 +32,7 @@ import java.io.IOException;
 
 
 public class Robot extends IterativeRobot {
-	RobotDrive myRobot = new RobotDrive(0, 1);   //left motor channel, right motor channel
+	RobotDrive myRobotDrive = new RobotDrive(0, 1);   //left motor channel, right motor channel
 	
 	Timer timer = new Timer();
 	final String optiondefaultAuto = "Default";
@@ -51,12 +53,21 @@ public class Robot extends IterativeRobot {
 	Talon rightMotor;
 	String autoSelectedFromDD;
 	int loopCounter;
+	Gyro gyro;
+	double Kp;
+	
+	Robot()
+	{
+        gyro = new ADXRS450_Gyro();   //use Cs0
+        myRobotDrive = new RobotDrive(1,2);  // need to know motor controller type ????
+        myRobotDrive.setExpiration(0.2);
+	}
 
 	Trajectory driveStraight = new Trajectory("DriveStraight");
 	Trajectory turnTowardsGearPeg =  new Trajectory("turnTowardsGearPeg");
 	Trajectory approachGearPeg = new Trajectory("approachGearPeg");
 	
-// Each trajectory is comprised of path segments
+
 	
 
 	//File f;
@@ -77,10 +88,12 @@ public class Robot extends IterativeRobot {
 		//SmartDashboard.putData("Auto choices", chooser);
 		
 		
-		//SmartDashboard.getString("DB String 5", tst );
+		SmartDashboard.getString("DB String 5", " <==== enter mode " );
 		//SmartDashboard.putString("DB String 1", tst);
 		System.out.println(tst);
-		myRobot.setExpiration(0.2);
+		myRobotDrive.setExpiration(0.2);
+		gyro.reset();
+		Kp = 1;
 
 		//pidControllerRight = new PIDController(.1, .1, .1, .1, rightCimCoder, rightMotor);
 		//pidControllerLeft = new PIDController(.1, .1, .1, .1, leftCimCoder, leftMotor);
@@ -145,8 +158,9 @@ public class Robot extends IterativeRobot {
 	
 	
 	void DriveStraightFeedback(){  
-    int encoderValue;
-		if ((encoderValue < driveStraight.segments[0].rightEncoderLimit) && (timer.get() < driveStraight.segments[0].timeLimit)) {
+    int rightEncoderValue = rightCimCoder.get();
+   // int leftEncoderValue = leftCimCoder.get();
+		if ((rightEncoderValue < driveStraight.segments[0].rightEncoderLimit) && (timer.get() < driveStraight.segments[0].timeLimit)) {
 			pidControllerRight.setPID(driveStraight.segments[0].Kp, driveStraight.segments[0].Ki, driveStraight.segments[0].Kd);
 			pidControllerLeft.setPID(driveStraight.segments[0].Kp, driveStraight.segments[0].Ki, driveStraight.segments[0].Kd);
 		} else if (timer.get() < driveStraight.segments[1].timeLimit){
@@ -156,36 +170,58 @@ public class Robot extends IterativeRobot {
 			pidControllerRight.setPID(driveStraight.segments[2].Kp, driveStraight.segments[2].Ki, driveStraight.segments[2].Kd);
 			pidControllerLeft.setPID(driveStraight.segments[2].Kp, driveStraight.segments[2].Ki, driveStraight.segments[2].Kd);
 			
-			myRobot.drive(0.0, 0.0); // stop robot
+			myRobotDrive.drive(0.0, 0.0); // stop robot
 		}
 	}
+	
+	
+	
 	
 	void DriveStraight(){  
 		if (timer.get() < driveStraight.segments[0].timeLimit) {
 			SmartDashboard.putString("drive power", "0.5 ");
 			SmartDashboard.putString("curve", "0 ");
-			myRobot.drive(-0.5, 0.0); // drive forwards half speed
+			myRobotDrive.drive(-0.5, 0.0); // drive forwards half speed
 		} else if (timer.get() < driveStraight.segments[1].timeLimit){
 			SmartDashboard.putString("drive power", "0.2 ");
 			SmartDashboard.putString("curve", "0 ");
-			myRobot.drive(-0.2, 0.0); // slow down for .25 second
+			myRobotDrive.drive(-0.2, 0.0); // slow down for .25 second
 		} else { 
 			SmartDashboard.putString("drive power", "0 ");
 			SmartDashboard.putString("curve", "0 "); 
-			myRobot.drive(0.0, 0.0); // stop robot
+			myRobotDrive.drive(0.0, 0.0); // stop robot
 		}
+	}
+	
+	void DriveStraightGyroFeedback()
+	{
+		double angle = gyro.getAngle(); // get current heading
+		SmartDashboard.putNumber("gyroAngle", angle);
+        myRobotDrive.drive(0.2, -angle*Kp); // drive towards heading 0
+	}
+	
+	void DriveTest()
+	{
+		double angle = gyro.getAngle(); // get current heading
+		double rightEncoderValue = rightCimCoder.get();
+		SmartDashboard.putNumber("rightEncoder", rightEncoderValue);
+		double leftEncoderValue = leftCimCoder.get();
+		SmartDashboard.putNumber("leftEncoder", leftEncoderValue);
+		SmartDashboard.putNumber("gyroAngle", angle);
+		myRobotDrive.drive(0.2, 0.0); // slow down for .25 second
+		myRobotDrive.drive(0.2, -angle*Kp); // drive towards heading 0
 	}
 	
 	void Turn()
 	{
 		if (timer.get() < .5) {
-			myRobot.drive(-0.4, 0.5); // drive forwards half speed
+			myRobotDrive.drive(-0.4, 0.5); // drive forwards half speed
 			SmartDashboard.putString("drive power", ".4 ");
 			SmartDashboard.putString("curve", ".5 ");
 		} else {
 			SmartDashboard.putString("drive power", "0 ");
 			SmartDashboard.putString("curve", "0 ");
-			myRobot.drive(0.0, 0.0); // stop robot
+			myRobotDrive.drive(0.0, 0.0); // stop robot
 		}
 	}
 	
@@ -193,17 +229,18 @@ public class Robot extends IterativeRobot {
 	{
 		loopCounter++;
 		testPixyi2c();
+		SmartDashboard.putNumber("loop Counter", loopCounter);
 		if (timer.get() < .5) {
-			myRobot.drive(-0.4, 0.0); // drive forwards half speed
+			myRobotDrive.drive(-0.4, 0.0); // drive forwards half speed
 		} else if (timer.get() < 1.0){
-			myRobot.drive(-0.2, 0.0); // slow down for .25 second
+			myRobotDrive.drive(-0.2, 0.0); // slow down for .25 second
 		} else {
-			myRobot.drive(0.0, 0.0); // stop robot
+			myRobotDrive.drive(0.0, 0.0); // stop robot
 		}
 	}
 	
 	void segment123(){
-		myRobot.drive(0.0, 0.0); 
+		myRobotDrive.drive(0.0, 0.0); 
 	}
 	
 	public void disabledInit(){
@@ -218,6 +255,7 @@ public class Robot extends IterativeRobot {
 	public void autonomousPeriodic() {
 		//autoSelected = chooser.getSelected();
 		autoSelectedFromDD = SmartDashboard.getString("DB/String 0", "Default");
+		
 		SmartDashboard.putString("auto Selected from DD", autoSelectedFromDD);
 		System.out.println("Auto selected: " + autoSelected);
 		//SmartDashboard.putString("mode", autoSelected);
@@ -226,19 +264,28 @@ public class Robot extends IterativeRobot {
 
 		switch (autoSelectedFromDD) {
 		case "DriveStraight":
+			SmartDashboard.getString("DB/String 6", "valid mode entered " );
 			DriveStraight();
 			break;
+		case "DriveTest":
+			SmartDashboard.getString("DB/String 6", "valid mode entered " );
+			DriveTest();
+			break;
 		case "Turn":
+			SmartDashboard.getString("DB/String 6", "valid mode entered " );
 			Turn();
 			break;
 		case "ApproachTarget":
+			SmartDashboard.getString("DB/String 6", "valid mode entered " );
 			ApproachTarget();
 			break;
 		case "Default":
+			DriveTest();
 		default:
 			// Put default auto code here
 			System.out.println("invalid auto mode");
-			myRobot.drive(0.0, 0.0);
+			SmartDashboard.getString("DB/String 6", "*** invalid mode entered !!!" );
+			myRobotDrive.drive(0.0, 0.0);
 		}
 		
 	}
@@ -259,7 +306,7 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void teleopPeriodic() {
 		testPixyi2c();
-		myRobot.drive(0.0, 0.0);
+		myRobotDrive.drive(0.0, 0.0);
 	}
 
 	/**
@@ -275,7 +322,7 @@ public class Robot extends IterativeRobot {
 			e.printStackTrace();
 		}*/
 		//testPixyi2c();
-		myRobot.drive(0.0, 0.0);
+		myRobotDrive.drive(0.0, 0.0);
 		//SmartDashboard.putString("test", "hello world");
 		LiveWindow.run();
 	}
@@ -291,7 +338,7 @@ public class Robot extends IterativeRobot {
 		// of data with an extra 2 bytes between frames per Object Block Format Figure
 		int maxBytes=64;
 		int targetIndex = 0;
-		int _checksum = 0;
+		int calculatedChecksum = 0;
 		final byte PIXY_START_WORD_LSB=0x55;
 		final byte PIXY_START_WORD_MSB=(byte) 0xaa;
 		final byte PIXY_START_WORDX_LSB=(byte) 0xaa;
@@ -331,7 +378,7 @@ public class Robot extends IterativeRobot {
 		/* check if the index is getting so high that you cant align and see an entire frame.  Ensure it isnt */
 			if (i > 50) i = 49;
 		// parse away the second set of sync bytes
-		SmartDashboard.putNumber("loopCounter", loopCounter);
+		//SmartDashboard.putNumber("loopCounter", loopCounter);
 		SmartDashboard.putNumber("i before target loop", i);
         while ((targetIndex < 2) && (!dataAllZeros)){
              	 
@@ -358,27 +405,33 @@ public class Robot extends IterativeRobot {
         	 SmartDashboard.putNumber("checksum", pixyObjects[targetIndex].checksum);
              if (pixyObjects[targetIndex].checksum > 0)
              {
-             SmartDashboard.putNumber("checksum > 0 for targetIndex=", targetIndex);
-			 pixyObjects[targetIndex].signatureNumber = (char) (pixyData[i + 4] & 0xff);
-			 pixyObjects[targetIndex].xPosition = (char) (((pixyData[i + 7] & 0xff) << 8) | (pixyData[i + 6] & 0xff));
-	         pixyObjects[targetIndex].yPosition = (char) (((pixyData[i + 9] & 0xff) << 8) | (pixyData[i + 8] & 0xff));
-	         pixyObjects[targetIndex].width = (char) (((pixyData[i + 11] & 0xff) << 8) | (pixyData[i + 10] & 0xff));
-	         pixyObjects[targetIndex].height = (char) (((pixyData[i + 13] & 0xff) << 8) | (pixyData[i + 12] & 0xff));
-	         calculatedChecksum = pixyObjects[targetIndex].signatureNumber 
-	        		 + pixyObjects[targetIndex].xPosition
-	        		 + pixyObjects[targetIndex].yPosition
-	        		 + pixyObjects[targetIndex].width
-	        		 + pixyObjects[targetIndex].height;
-	         SmartDashboard.putNumber("calculated checksum", calculatedChecksum);
-	         if (calculateChecksum == pixyObjects[targetIndex].checksum)
-	         {
-	         SmartDashboard.putBoolean
-	         //SmartDashboard.putNumber("targetIndex", targetIndex);
-	         pixyObjects[targetIndex].outputToSmartDashboard();
-	         
-	         ++targetIndex; 
-	 
-             }
+	             SmartDashboard.putNumber("checksum > 0 for targetIndex=", targetIndex);
+				 pixyObjects[targetIndex].signatureNumber = (char) (pixyData[i + 4] & 0xff);
+				 pixyObjects[targetIndex].xPosition = (char) (((pixyData[i + 7] & 0xff) << 8) | (pixyData[i + 6] & 0xff));
+		         pixyObjects[targetIndex].yPosition = (char) (((pixyData[i + 9] & 0xff) << 8) | (pixyData[i + 8] & 0xff));
+		         pixyObjects[targetIndex].width = (char) (((pixyData[i + 11] & 0xff) << 8) | (pixyData[i + 10] & 0xff));
+		         pixyObjects[targetIndex].height = (char) (((pixyData[i + 13] & 0xff) << 8) | (pixyData[i + 12] & 0xff));
+		         calculatedChecksum = pixyObjects[targetIndex].signatureNumber 
+		        		 + pixyObjects[targetIndex].xPosition
+		        		 + pixyObjects[targetIndex].yPosition
+		        		 + pixyObjects[targetIndex].width
+		        		 + pixyObjects[targetIndex].height;
+		         SmartDashboard.putNumber("calculated checksum", calculatedChecksum);
+		         if (calculatedChecksum == pixyObjects[targetIndex].checksum)
+		         {
+		        	 SmartDashboard.putBoolean("checksumVerified", true);
+		        	 pixyObjects[targetIndex].outputToSmartDashboard();
+		         }
+		         else
+		         {
+		        	//SmartDashboard.putNumber("targetIndex", targetIndex);
+		        	 SmartDashboard.putBoolean("checksumVerified", false);        
+			         
+		         }
+		         ++targetIndex;  
+		         
+		 
+	             }
              else 
             	 {
             	 	dataAllZeros = true; 

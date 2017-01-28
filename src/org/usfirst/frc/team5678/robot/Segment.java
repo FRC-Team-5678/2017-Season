@@ -2,9 +2,9 @@ package org.usfirst.frc.team5678.robot;
 
 public class Segment {
 	double timeLimit;
-	int feedForward;
-	int rightEncoderLimit;
-	int leftEncoderLimit;
+	double feedForward;
+	double rightEncoderLimit;
+	double leftEncoderLimit;
 	boolean PIDControllerEnabled;
 	double Kd;
 	double Kp;
@@ -13,6 +13,7 @@ public class Segment {
 	
 	Segment()
 	{
+		timeLimit = 0;
 		PIDControllerEnabled = false;
 		Kd = .1;
 		Kp = .1;
