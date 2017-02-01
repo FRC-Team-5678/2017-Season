@@ -20,7 +20,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -53,24 +52,16 @@ public class Robot extends IterativeRobot {
 	Talon leftMotor;
 	Talon rightMotor;
 	String autoSelectedFromDD;
-	static int loopCounter;
+	int loopCounter;
 	Gyro gyro;
 	double Kp;
-	static final String FILEPATH = "/home/lvuser/pixyData.txt";
-	static File f;
-	static BufferedWriter bw;
-	static FileWriter fw;
-	static PrintWriter printWriter;
-	static final String pixyTestFormat = "";
-	static String newLine;
 	
-	
-/*	Robot()
+	Robot()
 	{
-        //gyro = new ADXRS450_Gyro();   //use Cs0
+        gyro = new ADXRS450_Gyro();   //use Cs0
         myRobotDrive = new RobotDrive(1,2);  // need to know motor controller type ????
         myRobotDrive.setExpiration(0.2);
-	}*/
+	}
 
 	Trajectory driveStraight = new Trajectory("DriveStraight");
 	Trajectory turnTowardsGearPeg =  new Trajectory("turnTowardsGearPeg");
@@ -79,33 +70,14 @@ public class Robot extends IterativeRobot {
 
 	
 
-	
+	//File f;
+	//BufferedWriter bw;
+	//FileWriter fw;
 	
 	/**
 	 * This function is run when the robot is first started up and should be
 	 * used for any initialization code.
 	 */
-	
-	
-	static void openTestFile(){
-		try {
-			f = new File(FILEPATH);
-			if(!f.exists()){                
-				f.createNewFile();
-				//SmartDashboard.putString("file status", "opened");
-				System.out.println("file opened");
-			}	
-			if (printWriter == null){
-				printWriter = new PrintWriter (f);
-				
-			}
-			SmartDashboard.putString("file status", "open");
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-	
 	@Override
 	public void robotInit() {
 		//chooser.addDefault("Default Auto", defaultAuto);
@@ -116,29 +88,18 @@ public class Robot extends IterativeRobot {
 		//SmartDashboard.putData("Auto choices", chooser);
 		
 		
-		//SmartDashboard.putString("DB/String 5", " <==== enter mode " );
-		//SmartDashboard.putString("DB/String 1", tst);
-		//System.out.println(tst);
-		SmartDashboard.putString("status", "robotInit");
+		SmartDashboard.getString("DB String 5", " <==== enter mode " );
+		//SmartDashboard.putString("DB String 1", tst);
+		System.out.println(tst);
 		myRobotDrive.setExpiration(0.2);
-		//gyro.reset();
+		gyro.reset();
 		Kp = 1;
-		newLine = System.getProperty("line.separator");//This will retrieve line separator dependent on OS.
-
-	}
-		
-
-		
-		
-		
-		
-	
 
 		//pidControllerRight = new PIDController(.1, .1, .1, .1, rightCimCoder, rightMotor);
 		//pidControllerLeft = new PIDController(.1, .1, .1, .1, leftCimCoder, leftMotor);
 		
 		
-		/*driveStraight.segments[0].timeLimit = 1;
+		driveStraight.segments[0].timeLimit = 1;
 		driveStraight.segments[1].timeLimit = 2;
 		driveStraight.segments[2].timeLimit = 3;
 		driveStraight.segments[0].feedForward = .5;
@@ -156,15 +117,27 @@ public class Robot extends IterativeRobot {
 		driveStraight.segments[2].Kd = 0;
 		driveStraight.segments[2].Kp = .5;
 		driveStraight.segments[2].Ki = .1;
-		driveStraight.segments[2].Kf = .5;*/
+		driveStraight.segments[2].Kf = .5;
 		
 
 		
 		//LiveWindow.addActuator("Drive train", "right motor", rightMotor);
 		//LiveWindow.addActuator("Drive train", "left motor", leftMotor);
 
-	
- 	
+/*    	try {
+    		f = new File("~/Output.txt");
+    		if(!f.exists()){                
+    			f.createNewFile();
+    		}
+			fw = new FileWriter(f);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	//bw = new BufferedWriter(fw);*/
+				
+	}
+
 	/**
 	 * This autonomous (along with the chooser code above) shows how to select
 	 * between different autonomous modes using the dashboard. The sendable
@@ -178,14 +151,10 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void autonomousInit() {
-		SmartDashboard.putString("status", "autonomousInit");
 		timer.reset();
 		timer.start();
-		loopCounter = 0;	
-		openTestFile();
-		
-}
-
+		loopCounter = 0;
+	}
 	
 	
 	void DriveStraightFeedback(){  
@@ -256,11 +225,11 @@ public class Robot extends IterativeRobot {
 		}
 	}
 	
-	void ApproachTarget() throws IOException
+	void ApproachTarget()
 	{
-		myRobotDrive.drive(0.0, 0.0); 
+		loopCounter++;
 		testPixyi2c();
-		
+		SmartDashboard.putNumber("loop Counter", loopCounter);
 		if (timer.get() < .5) {
 			myRobotDrive.drive(-0.4, 0.0); // drive forwards half speed
 		} else if (timer.get() < 1.0){
@@ -269,25 +238,12 @@ public class Robot extends IterativeRobot {
 			myRobotDrive.drive(0.0, 0.0); // stop robot
 		}
 	}
-
+	
 	void segment123(){
 		myRobotDrive.drive(0.0, 0.0); 
 	}
 	
 	public void disabledInit(){
-	
-		/*bw.flush();
-		bw.close();
-		fw.close();*/
-		SmartDashboard.putString("status", "disabledInit");
-		if ( printWriter != null ) 
-		{
-			printWriter.flush();
-		    printWriter.close();
-		    SmartDashboard.putString("file status", "closed file in disabledInit");
-		    System.out.println("file closed in disabled init");
-		    //f.close();
-		}
 		
 	}
 
@@ -299,61 +255,37 @@ public class Robot extends IterativeRobot {
 	public void autonomousPeriodic() {
 		//autoSelected = chooser.getSelected();
 		autoSelectedFromDD = SmartDashboard.getString("DB/String 0", "Default");
-		SmartDashboard.putString("status", "autonomousPeriodic");
-		loopCounter++;
-		openTestFile();
 		
-		
-		//SmartDashboard.putString("auto Selected from DD", autoSelectedFromDD);
-		//System.out.println("Auto selected: " + autoSelected);
+		SmartDashboard.putString("auto Selected from DD", autoSelectedFromDD);
+		System.out.println("Auto selected: " + autoSelected);
 		//SmartDashboard.putString("mode", autoSelected);
 		//SmartDashboard.putDouble("time", timer.get()); 
-		//SmartDashboard.putNumber("timeNumber", timer.get());
+		SmartDashboard.putNumber("timeNumber", timer.get());
 
 		switch (autoSelectedFromDD) {
 		case "DriveStraight":
-			SmartDashboard.putString("DB/String 1", "valid mode entered " );
+			SmartDashboard.getString("DB/String 6", "valid mode entered " );
 			DriveStraight();
 			break;
 		case "DriveTest":
-			SmartDashboard.putString("DB/String 1", "valid mode entered " );
+			SmartDashboard.getString("DB/String 6", "valid mode entered " );
 			DriveTest();
 			break;
 		case "Turn":
-			SmartDashboard.putString("DB/String 1", "valid mode entered " );
+			SmartDashboard.getString("DB/String 6", "valid mode entered " );
 			Turn();
 			break;
 		case "ApproachTarget":
-			SmartDashboard.putString("DB/String 1", "valid mode entered " );
-			try {
-				ApproachTarget();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			SmartDashboard.getString("DB/String 6", "valid mode entered " );
+			ApproachTarget();
 			break;
 		case "Default":
-			//DriveTest();
-			try {
-				ApproachTarget();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			DriveTest();
 		default:
 			// Put default auto code here
-			try {
-				ApproachTarget();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
 			System.out.println("invalid auto mode");
-			SmartDashboard.putString("DB/String 1", "*** invalid mode entered !!!" );
+			SmartDashboard.getString("DB/String 6", "*** invalid mode entered !!!" );
 			myRobotDrive.drive(0.0, 0.0);
-		}
-		if (printWriter != null){
-			printWriter.flush();
 		}
 		
 	}
@@ -373,6 +305,7 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void teleopPeriodic() {
+		testPixyi2c();
 		myRobotDrive.drive(0.0, 0.0);
 	}
 
@@ -381,9 +314,16 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void testPeriodic() {
-	
+		/*try {
+			//bw.close();
+			//fw.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}*/
+		//testPixyi2c();
 		myRobotDrive.drive(0.0, 0.0);
-
+		//SmartDashboard.putString("test", "hello world");
 		LiveWindow.run();
 	}
 	
@@ -392,7 +332,7 @@ public class Robot extends IterativeRobot {
 			
 	
 	//@SuppressWarnings("deprecation")
-	public static void testPixyi2c() throws IOException{
+	public static void testPixyi2c(){
 		
 		// set the number of bytes to get from the pixycam each read cycle.  The pixycam outputs 14 byte blocks
 		// of data with an extra 2 bytes between frames per Object Block Format Figure
@@ -403,13 +343,12 @@ public class Robot extends IterativeRobot {
 		final byte PIXY_START_WORD_MSB=(byte) 0xaa;
 		final byte PIXY_START_WORDX_LSB=(byte) 0xaa;
 		final byte PIXY_START_WORDX_MSB=0x55;
-		final String HEX_FORMAT="%02X";
-		String convertByte = "";
+
 
 		// declare the object data variables
-		pixyObjectBlock[] pixyObjects = new pixyObjectBlock[3];
+		pixyObjectBlock[] pixyObjects = new pixyObjectBlock[6];
 		
-		for (int i=0; i < 3; i++){
+		for (int i=0; i < 6; i++){
 			pixyObjects[i] = new pixyObjectBlock();
 		}
 		
@@ -430,55 +369,45 @@ public class Robot extends IterativeRobot {
 		// check for a null array and dont try to parse bad data */
 		if (pixyData != null) {
 			int i = 0;
-			SmartDashboard.putNumber("loop Counter", loopCounter);
-			//bw.write("loop Counter = " + Integer.toString(loopCounter));
-			if (printWriter == null) {SmartDashboard.putString("file status", "printwriter null in testPixyi2c");}
-			printWriter.print("\r\n" + Integer.toString(loopCounter) + ", ");
-			for (int idx=0; idx < 14; idx++) {  //for testing - write to SmartDashboard and to file on roboRIO
-				convertByte = String.format(HEX_FORMAT, pixyData[i]);
-				SmartDashboard.putString("pixyData[" + idx + "]", convertByte );
-
-					/*bw.write("pixyData[" + idx + "]" + convertByte );
-					bw.newLine();*/
-				printWriter.print(convertByte + ", ");
-			}
-			printWriter.flush();
-
+		// parse the data to move the index pointer (i) to the start of a frame
 		// i is incremented until the first two bytes (i and i+1) match the sync bytes (0x55 and 0xaa)
-		// Note:  In Java, the byte primitive is signed, and prior to bitwise operations, the JVM
-	    // will expand to an int filled with leading 1s, so the & 0xff is required to 
-        // treat the number as unsigned. 
-			while ((((pixyData[i] & 0xff) != PIXY_START_WORD_LSB) || ((pixyData[i + 1] & 0xff) != PIXY_START_WORD_MSB)) && (i < 50)) { i++; }
-			//i = i+2;
+		// Note:  In Java, the and operation with 0xff is key to matching the 0xaa because the byte array is
+//		           automatically filled by Java with leading 1s that make the number -86
+			while (!((pixyData[i] & 0xff) == PIXY_START_WORD_LSB) && ((pixyData[i + 1] & 0xff) == PIXY_START_WORD_MSB) && i < 50) { i++; }
 			i++;
 		/* check if the index is getting so high that you cant align and see an entire frame.  Ensure it isnt */
 			if (i > 50) i = 49;
 		// parse away the second set of sync bytes
 		//SmartDashboard.putNumber("loopCounter", loopCounter);
-		SmartDashboard.putNumber("i start frame", i);
+		SmartDashboard.putNumber("i before target loop", i);
         while ((targetIndex < 2) && (!dataAllZeros)){
              	 
-             //while (!((pixyData[i] & 0xff) == PIXY_START_WORD_LSB) && ((pixyData[i + 1] & 0xff) == PIXY_START_WORD_MSB) && i < 50) { i++; }
-             //while (!(((pixyData[i] & 0xff) == PIXY_START_WORD_LSB) && ((pixyData[i + 1] & 0xff) == PIXY_START_WORD_MSB) && (i < 50))) { i++; }
-         	while ((((pixyData[i] & 0xff) != PIXY_START_WORD_LSB) || ((pixyData[i + 1] & 0xff) != PIXY_START_WORD_MSB)) && (i < 50)) { i++; }
-         	if (i == 50) break;
-             SmartDashboard.putString("i", String.format(HEX_FORMAT, i));
-             printWriter.print("i=" + "," + Integer.toString(i) + ", ");
-             printWriter.println("targetIndex= " + "," + Integer.toString(targetIndex) + ",");
-            
+             while (!((pixyData[i] & 0xff) == PIXY_START_WORD_LSB) && ((pixyData[i + 1] & 0xff) == PIXY_START_WORD_MSB) && i < 50) { i++; }
+             SmartDashboard.putNumber("i inside target loop", i);
+             SmartDashboard.putNumber("pixyData[i]", pixyData[i]);
+        	 SmartDashboard.putNumber("pixyData[i+1]", pixyData[i+1]);
+        	 SmartDashboard.putNumber("pixyData[i+2]", pixyData[i+2]);
+        	 SmartDashboard.putNumber("pixyData[i+3]", pixyData[i+3]);
+        	 SmartDashboard.putNumber("pixyData[i+4]", pixyData[i+4]);
+        	 SmartDashboard.putNumber("pixyData[i+5]", pixyData[i+5]);
+        	 SmartDashboard.putNumber("pixyData[i+6]", pixyData[i+6]);
+        	 SmartDashboard.putNumber("pixyData[i+7]", pixyData[i+7]);
+        	 SmartDashboard.putNumber("pixyData[i+8]", pixyData[i+8]);
+        	 SmartDashboard.putNumber("pixyData[i+9]", pixyData[i+9]);
+        	 SmartDashboard.putNumber("pixyData[i+10]", pixyData[i+10]);
+        	 SmartDashboard.putNumber("pixyData[i+11]", pixyData[i+11]);
+        	 SmartDashboard.putNumber("pixyData[i+12]", pixyData[i+12]);
+        	 SmartDashboard.putNumber("pixyData[i+13]", pixyData[i+13]);
+        	 SmartDashboard.putNumber("pixyData[i+14]", pixyData[i+14]);
         
              //SmartDashboard.putNumber("i inside target loop", i);
         	 pixyObjects[targetIndex].checksum = (char) (((pixyData[i + 3] & 0xff) << 8) | (pixyData[i + 2] & 0xff));
         	 SmartDashboard.putNumber("checksum", pixyObjects[targetIndex].checksum);
-        	 /*bw.write("checksum=" +  Integer.toString(pixyObjects[targetIndex].checksum));
-             bw.newLine();*/
-             printWriter.println("checksum=," +  Integer.toString(pixyObjects[targetIndex].checksum) + ",");
              if (pixyObjects[targetIndex].checksum > 0)
              {
 	             SmartDashboard.putNumber("checksum > 0 for targetIndex=", targetIndex);
 				 pixyObjects[targetIndex].signatureNumber = (char) (pixyData[i + 4] & 0xff);
-				 //pixyObjects[targetIndex].signatureNumber = (char) (((pixyData[i + 5] & 0xff) << 8) | (pixyData[i + 4] & 0xff));
-				 pixyObjects[targetIndex].xPosition = (char) (((pixyData[i + 7] & 0xff) << 8)  | (pixyData[i + 6] & 0xff));
+				 pixyObjects[targetIndex].xPosition = (char) (((pixyData[i + 7] & 0xff) << 8) | (pixyData[i + 6] & 0xff));
 		         pixyObjects[targetIndex].yPosition = (char) (((pixyData[i + 9] & 0xff) << 8) | (pixyData[i + 8] & 0xff));
 		         pixyObjects[targetIndex].width = (char) (((pixyData[i + 11] & 0xff) << 8) | (pixyData[i + 10] & 0xff));
 		         pixyObjects[targetIndex].height = (char) (((pixyData[i + 13] & 0xff) << 8) | (pixyData[i + 12] & 0xff));
@@ -488,21 +417,17 @@ public class Robot extends IterativeRobot {
 		        		 + pixyObjects[targetIndex].width
 		        		 + pixyObjects[targetIndex].height;
 		         SmartDashboard.putNumber("calculated checksum", calculatedChecksum);
-	        	 //bw.write("calculated checksum=" +  calculatedChecksum);
-	        	 printWriter.println("calculated checksum=," +  Integer.toString(calculatedChecksum) + ",");
 		         if (calculatedChecksum == pixyObjects[targetIndex].checksum)
 		         {
 		        	 SmartDashboard.putBoolean("checksumVerified", true);
-		        	 
+		        	 pixyObjects[targetIndex].outputToSmartDashboard();
 		         }
 		         else
 		         {
 		        	//SmartDashboard.putNumber("targetIndex", targetIndex);
 		        	 SmartDashboard.putBoolean("checksumVerified", false);        
-		        	 
+			         
 		         }
-		         pixyObjects[targetIndex].outputToSmartDashboard();
-		         pixyObjects[targetIndex].outputToFile(printWriter);
 		         ++targetIndex;  
 		         
 		 
@@ -510,12 +435,11 @@ public class Robot extends IterativeRobot {
              else 
             	 {
             	 	dataAllZeros = true; 
-            	 	printWriter.format("\n");
             	 
             	 }
 		}
-     
+         /*  */
 	}
-  }
+}
 }
 
