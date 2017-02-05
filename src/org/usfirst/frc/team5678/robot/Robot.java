@@ -15,6 +15,7 @@ import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
+import edu.wpi.first.wpilibj.hal.I2CJNI;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -63,6 +64,9 @@ public class Robot extends IterativeRobot {
 	static PrintWriter printWriter;
 	static final String pixyTestFormat = "";
 	static String newLine;
+	public static I2C pixy;
+	public static I2CJNI pixyJNI;  //Since there is only one, do we still need to open and close it on each iteration?
+	
 	
 	
 /*	Robot()
@@ -123,8 +127,12 @@ public class Robot extends IterativeRobot {
 		myRobotDrive.setExpiration(0.2);
 		//gyro.reset();
 		Kp = 1;
-		newLine = System.getProperty("line.separator");//This will retrieve line separator dependent on OS.
-
+		
+		pixy = new I2C(Port.kOnboard, 0x54);     //no we create it each time
+		I2CJNI pixyJNI = new I2CJNI();
+		//pixyJNI.i2CInitialize(Port.kOnboard);
+		//pixyJNI.i2CInitialize();
+		
 	}
 		
 
@@ -387,9 +395,13 @@ public class Robot extends IterativeRobot {
 		LiveWindow.run();
 	}
 	
-	public static I2C pixy;
 	
 			
+	
+	
+	
+	
+	
 	
 	//@SuppressWarnings("deprecation")
 	public static void testPixyi2c() throws IOException{
@@ -415,33 +427,33 @@ public class Robot extends IterativeRobot {
 		
 		// declare a byte array to store the data from the camera
 		byte[] pixyData = new byte[maxBytes];
-		pixy = new I2C(Port.kOnboard, 0x54);
+		
 
 		boolean dataAllZeros = false;
-
+		//
+		//i2CRead(byte port, byte address, ByteBuffer dataRecieved, byte receiveSize) 
 		pixy.readOnly(pixyData, 64);   
 		
-		/* is there buffering at the pixy (or roboRIO), or will we recieve fresh (recent completed) frame data?
+		 //is there buffering at the pixy (or roboRIO), or will we recieve fresh (recent completed) frame data?
 		//assumptions:  neither pixy nor roboRIO buffer I2C data.  When the readOnly method is executing, the roboRIO
 		// requests data from the pixy and waits until 64 bytes are delivered.  The pixy responds with current data, and if
 		// there are insufficient targets to fill out 64 bytes, it sends zeros. 
 		// The pixy processes data at 50 frames per second, and the roboRIO iterative methods are called at that same
 		// frequency so the roboRIO should be able to recieve fresh data on each iteration. 		
-		// check for a null array and dont try to parse bad data */
+		// check for a null array and dont try to parse bad data 
 		if (pixyData != null) {
 			int i = 0;
 			SmartDashboard.putNumber("loop Counter", loopCounter);
 			//bw.write("loop Counter = " + Integer.toString(loopCounter));
 			if (printWriter == null) {SmartDashboard.putString("file status", "printwriter null in testPixyi2c");}
 			printWriter.print("\r\n" + Integer.toString(loopCounter) + ", ");
-			for (int idx=0; idx < 14; idx++) {  //for testing - write to SmartDashboard and to file on roboRIO
+			for (int idx=0; idx < 64; idx++) {  //for testing - write to SmartDashboard and to file on roboRIO
 				convertByte = String.format(HEX_FORMAT, pixyData[i]);
-				SmartDashboard.putString("pixyData[" + idx + "]", convertByte );
-
-					/*bw.write("pixyData[" + idx + "]" + convertByte );
-					bw.newLine();*/
 				printWriter.print(convertByte + ", ");
+				if (idx < 15) {SmartDashboard.putString("pixyData[" + idx + "]", convertByte );}
+
 			}
+			//SmartDashboard.putNumber("i start frame", i);
 			printWriter.flush();
 
 		// i is incremented until the first two bytes (i and i+1) match the sync bytes (0x55 and 0xaa)
@@ -449,13 +461,13 @@ public class Robot extends IterativeRobot {
 	    // will expand to an int filled with leading 1s, so the & 0xff is required to 
         // treat the number as unsigned. 
 			while ((((pixyData[i] & 0xff) != PIXY_START_WORD_LSB) || ((pixyData[i + 1] & 0xff) != PIXY_START_WORD_MSB)) && (i < 50)) { i++; }
-			//i = i+2;
-			i++;
-		/* check if the index is getting so high that you cant align and see an entire frame.  Ensure it isnt */
+			i = i+2;
+			//i++;
+		 //check if the index is getting so high that you cant align and see an entire frame.  Ensure it isnt 
 			if (i > 50) i = 49;
 		// parse away the second set of sync bytes
 		//SmartDashboard.putNumber("loopCounter", loopCounter);
-		SmartDashboard.putNumber("i start frame", i);
+		SmartDashboard.putNumber("i start block", i);
         while ((targetIndex < 2) && (!dataAllZeros)){
              	 
              //while (!((pixyData[i] & 0xff) == PIXY_START_WORD_LSB) && ((pixyData[i + 1] & 0xff) == PIXY_START_WORD_MSB) && i < 50) { i++; }
@@ -470,8 +482,8 @@ public class Robot extends IterativeRobot {
              //SmartDashboard.putNumber("i inside target loop", i);
         	 pixyObjects[targetIndex].checksum = (char) (((pixyData[i + 3] & 0xff) << 8) | (pixyData[i + 2] & 0xff));
         	 SmartDashboard.putNumber("checksum", pixyObjects[targetIndex].checksum);
-        	 /*bw.write("checksum=" +  Integer.toString(pixyObjects[targetIndex].checksum));
-             bw.newLine();*/
+        	 bw.write("checksum=" +  Integer.toString(pixyObjects[targetIndex].checksum));
+             bw.newLine();
              printWriter.println("checksum=," +  Integer.toString(pixyObjects[targetIndex].checksum) + ",");
              if (pixyObjects[targetIndex].checksum > 0)
              {
@@ -510,12 +522,12 @@ public class Robot extends IterativeRobot {
              else 
             	 {
             	 	dataAllZeros = true; 
-            	 	printWriter.format("\n");
             	 
             	 }
+		     }   
 		}
-     
 	}
+		
   }
-}
+
 
