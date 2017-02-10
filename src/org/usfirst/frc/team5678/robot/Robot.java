@@ -15,6 +15,7 @@ import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
+import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.hal.I2CJNI;
 
 import java.io.BufferedWriter;
@@ -22,6 +23,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -66,7 +68,9 @@ public class Robot extends IterativeRobot {
 	static String newLine;
 	public static I2C pixy;
 	public static I2CJNI pixyJNI;  //Since there is only one, do we still need to open and close it on each iteration?
-	
+	final static byte pixyAddress = 0x54;
+	static I2C.Port pixyPort = I2C.Port.kOnboard;
+	static byte pixyPortByte;
 	
 	
 /*	Robot()
@@ -128,10 +132,12 @@ public class Robot extends IterativeRobot {
 		//gyro.reset();
 		Kp = 1;
 		
-		pixy = new I2C(Port.kOnboard, 0x54);     //no we create it each time
+		pixy = new I2C(Port.kOnboard, 0x54);     
 		I2CJNI pixyJNI = new I2CJNI();
 		//pixyJNI.i2CInitialize(Port.kOnboard);
-		//pixyJNI.i2CInitialize();
+		byte pixyPortByte = (byte)I2C.Port.kOnboard.value;
+		I2CJNI.i2CInitialize(pixyPortByte);
+		CameraServer.getInstance().startAutomaticCapture("cam0",0);
 		
 	}
 		
@@ -409,9 +415,10 @@ public class Robot extends IterativeRobot {
 		// set the number of bytes to get from the pixycam each read cycle.  The pixycam outputs 14 byte blocks
 		// of data with an extra 2 bytes between frames per Object Block Format Figure
 		int maxBytes=64;
+		int bytesToRead=64;
 		int targetIndex = 0;
 		int calculatedChecksum = 0;
-		final byte PIXY_START_WORD_LSB=0x55;
+		final byte PIXY_START_WORD_LSB=(byte) 0x55;
 		final byte PIXY_START_WORD_MSB=(byte) 0xaa;
 		final byte PIXY_START_WORDX_LSB=(byte) 0xaa;
 		final byte PIXY_START_WORDX_MSB=0x55;
@@ -426,14 +433,15 @@ public class Robot extends IterativeRobot {
 		}
 		
 		// declare a byte array to store the data from the camera
-		byte[] pixyData = new byte[maxBytes];
+		byte[] pixyData = new byte[bytesToRead];
+		//ByteBuffer pixyDataBuffer;
 		
 
 		boolean dataAllZeros = false;
 		//
 		//i2CRead(byte port, byte address, ByteBuffer dataRecieved, byte receiveSize) 
-		pixy.readOnly(pixyData, 64);   
-		
+		pixy.readOnly(pixyData, bytesToRead);
+		//pixyJNI.i2CRead(pixyPortByte, pixyAddress, pixyData, (byte)bytesToRead);
 		 //is there buffering at the pixy (or roboRIO), or will we recieve fresh (recent completed) frame data?
 		//assumptions:  neither pixy nor roboRIO buffer I2C data.  When the readOnly method is executing, the roboRIO
 		// requests data from the pixy and waits until 64 bytes are delivered.  The pixy responds with current data, and if
@@ -447,7 +455,7 @@ public class Robot extends IterativeRobot {
 			//bw.write("loop Counter = " + Integer.toString(loopCounter));
 			if (printWriter == null) {SmartDashboard.putString("file status", "printwriter null in testPixyi2c");}
 			printWriter.print("\r\n" + Integer.toString(loopCounter) + ", ");
-			for (int idx=0; idx < 64; idx++) {  //for testing - write to SmartDashboard and to file on roboRIO
+			for (int idx=0; idx < bytesToRead; idx++) {  //for testing - write to SmartDashboard and to file on roboRIO
 				convertByte = String.format(HEX_FORMAT, pixyData[i]);
 				printWriter.print(convertByte + ", ");
 				if (idx < 15) {SmartDashboard.putString("pixyData[" + idx + "]", convertByte );}
@@ -460,11 +468,10 @@ public class Robot extends IterativeRobot {
 		// Note:  In Java, the byte primitive is signed, and prior to bitwise operations, the JVM
 	    // will expand to an int filled with leading 1s, so the & 0xff is required to 
         // treat the number as unsigned. 
-			while ((((pixyData[i] & 0xff) != PIXY_START_WORD_LSB) || ((pixyData[i + 1] & 0xff) != PIXY_START_WORD_MSB)) && (i < 50)) { i++; }
+			while ((((pixyData[i] & 0xff) != PIXY_START_WORD_LSB) || ((pixyData[i + 1] & 0xff) != PIXY_START_WORD_MSB)) && (i < bytesToRead-13)) { i++; }
 			i = i+2;
 			//i++;
-		 //check if the index is getting so high that you cant align and see an entire frame.  Ensure it isnt 
-			if (i > 50) i = 49;
+		 
 		// parse away the second set of sync bytes
 		//SmartDashboard.putNumber("loopCounter", loopCounter);
 		SmartDashboard.putNumber("i start block", i);
@@ -472,8 +479,12 @@ public class Robot extends IterativeRobot {
              	 
              //while (!((pixyData[i] & 0xff) == PIXY_START_WORD_LSB) && ((pixyData[i + 1] & 0xff) == PIXY_START_WORD_MSB) && i < 50) { i++; }
              //while (!(((pixyData[i] & 0xff) == PIXY_START_WORD_LSB) && ((pixyData[i + 1] & 0xff) == PIXY_START_WORD_MSB) && (i < 50))) { i++; }
-         	while ((((pixyData[i] & 0xff) != PIXY_START_WORD_LSB) || ((pixyData[i + 1] & 0xff) != PIXY_START_WORD_MSB)) && (i < 50)) { i++; }
-         	if (i == 50) break;
+         	while ((((pixyData[i] & 0xff) != PIXY_START_WORD_LSB) || ((pixyData[i + 1] & 0xff) != PIXY_START_WORD_MSB)) && (i < bytesToRead-14)) { i++; }
+         	if (((pixyData[i] & 0xff) != PIXY_START_WORD_LSB) || ((pixyData[i+1] & 0xff) != PIXY_START_WORD_MSB))
+         	{
+         		break; //no object block sync
+         	}
+
              SmartDashboard.putString("i", String.format(HEX_FORMAT, i));
              printWriter.print("i=" + "," + Integer.toString(i) + ", ");
              printWriter.println("targetIndex= " + "," + Integer.toString(targetIndex) + ",");
@@ -482,9 +493,8 @@ public class Robot extends IterativeRobot {
              //SmartDashboard.putNumber("i inside target loop", i);
         	 pixyObjects[targetIndex].checksum = (char) (((pixyData[i + 3] & 0xff) << 8) | (pixyData[i + 2] & 0xff));
         	 SmartDashboard.putNumber("checksum", pixyObjects[targetIndex].checksum);
-        	 bw.write("checksum=" +  Integer.toString(pixyObjects[targetIndex].checksum));
-             bw.newLine();
              printWriter.println("checksum=," +  Integer.toString(pixyObjects[targetIndex].checksum) + ",");
+             printWriter.flush();
              if (pixyObjects[targetIndex].checksum > 0)
              {
 	             SmartDashboard.putNumber("checksum > 0 for targetIndex=", targetIndex);
