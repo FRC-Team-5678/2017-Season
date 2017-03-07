@@ -3,6 +3,9 @@ package org.usfirst.frc.team5678.robot;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.RobotDrive.MotorType;
+import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.CameraServer;
@@ -23,6 +26,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Robot extends IterativeRobot {
 	RobotDrive myRobot;
 	Joystick stick;
+	Spark leftMotor, rightMotor;
 	Encoder encL, encR;
 	int autoLoopCounter;
 	int autoState;
@@ -36,15 +40,21 @@ public class Robot extends IterativeRobot {
 	String boilerPosition;
 	String robotPosition;
 	String autoSelected;
+	CameraServer cameraServer;
+	
 
-	double distance;
+	double distance, distanceL, distanceR;
 	double angle;
+	double turningValue;
+    double angleSetpoint = 0.0;
+    final double pGain = .006; //propotional turning constant
+    
 	
 	SendableChooser<String> chooser = new SendableChooser<>();
 	SendableChooser<String> boilerPositionChooser = new SendableChooser<>();
 	SendableChooser<String> robotPositionChooser = new SendableChooser<>();
 
-    ADXRS450_Gyro gyro;
+//    ADXRS450_Gyro gyro;
 	
     /**
      * This function is run when the robot is first started up and should be
@@ -64,13 +74,21 @@ public class Robot extends IterativeRobot {
 		robotPositionChooser.addObject("Robot on the Right", robotStartingOnRight);
 		SmartDashboard.putData("Robot Position", robotPositionChooser);
 		
-    	myRobot = new RobotDrive(0,1);
+		leftMotor = new Spark(0);
+		rightMotor = new Spark(1);
+		
+    	myRobot = new RobotDrive(leftMotor,rightMotor);
+    	myRobot.setInvertedMotor(RobotDrive.MotorType.kRearLeft, true);
+    	myRobot.setInvertedMotor(RobotDrive.MotorType.kRearRight, true);
+
     	stick = new Joystick(0);
     	encL = new Encoder(0, 1, false, Encoder.EncodingType.k2X);
     	encR = new Encoder(2, 3, false, Encoder.EncodingType.k2X);
-        gyro = new ADXRS450_Gyro(); 
-        gyro.calibrate();
-        CameraServer.getInstance().startAutomaticCapture("cam0",0);
+        //gyro = new ADXRS450_Gyro(); 
+        //gyro.calibrate();
+
+        CameraServer.getInstance().startAutomaticCapture("cam0", 0);
+
     }
     
     /**
@@ -78,22 +96,23 @@ public class Robot extends IterativeRobot {
      */
     public void autonomousInit() {
     	System.out.println("Autonomous Init: ==============================");
-    	gyro.reset();
+    	//gyro.reset();
     	autoLoopCounter = 0;
     	autoState = 0;
     	distance = 0.0;
     	angle = 0.0;
+    	turningValue = 0.0;
 
     	encL.setMaxPeriod(.1);
 		encL.setMinRate(10);
-		encL.setDistancePerPulse(5);
+		encL.setDistancePerPulse(.088);
 		encL.setReverseDirection(true);
 		encL.setSamplesToAverage (7);
     	encL.reset();
 
 		encR.setMaxPeriod(.1);
 		encR.setMinRate(10);
-		encR.setDistancePerPulse(5);
+		encR.setDistancePerPulse(.088);
 		encR.setReverseDirection(true);
 		encR.setSamplesToAverage (7);
     	encR.reset();
@@ -106,13 +125,6 @@ public class Robot extends IterativeRobot {
 		System.out.println("Auto selected: " + autoSelected);
 		robotPositionChooser.addDefault("Robot on the Left", robotStartingOnLeft);
     	
-    	
-    }
-
-    /**
-     * This function is called periodically during autonomous
-     */
-    public void autonomousPeriodic() {
     	switch (robotPosition) {
 			case robotStartingOnLeft:
 				System.out.printf("  Robot Starting on Left ");
@@ -124,27 +136,53 @@ public class Robot extends IterativeRobot {
 				System.out.printf("  Robot Starting on Right ");
 				break;
     	}
-    	switch (autoState) {      // where is autoState set?
+    	
+    }
+
+    /**
+     * This function is called periodically during autonomous
+     */
+    public void autonomousPeriodic() {
+    	switch (autoState) {
 	    	case 0:
+	    		/*
 	    		// drive forward till mark
 	    		distance = encL.getDistance();
-		    	if(distance + autoLoopCounter < 200) //Check if we've completed 100 loops (approximately 2 seconds)
-				{
-					myRobot.drive(-0.5, 0.0); 	// drive forwards half speed
+		    	if(distance < 60) {//Check if we've completed 100 loops (approximately 2 seconds)
+					// myRobot.drive(0.5, 0.0); 	// drive forwards half speed
+		            turningValue =  0;
+		            //turningValue =  (angleSetpoint - gyro.getAngle())*pGain;
+	                myRobot.drive(0.25, turningValue);
+					
+					
 					System.out.printf("  Driving forward. Distance: %2f%n", distance);
 					autoLoopCounter++;
 				} else {
 					myRobot.drive(0.0, 0.0); 	// stop robot
-					autoState = 1;
+					//autoState = 1;
 				}
+				*/
+	    		distanceL = encL.getDistance();
+	    		distanceR = encR.getDistance();
+				System.out.printf("  Driving forward. DistanceL: %2f%n", distanceL);
+				System.out.printf("  Driving forward. DistanceR: %2f%n", distanceR);
+					autoLoopCounter++;
+					myRobot.tankDrive( (distanceL < 60)? -0.5:0, (distanceL < 60)? -0.5:0 ); 	// stop robot
+//					myRobot.tankDrive( -0.5, (distanceR < 60)? -0.5:0 ); 	// stop robot
+					//autoState = 1;t
+	    		
+	    		
+	    		
+	    		
 		    	break;
 	    	case 1:
-	    		angle = gyro.getAngle();
-		    	if(angle < 30) //If angle is less than 30 degrees, turn right
-				{
+	    		if (robotPosition == robotStartingOnCenter)break;
+	    		//angle = gyro.getAngle();
+		    	if(angle < 30) { //If angle is less than 30 degrees, turn right
 					System.out.println("  Turning Right ");
-		    		myRobot.tankDrive(0.5, -0.5);
-					angle = gyro.getAngle();
+		    		myRobot.tankDrive(-0.5, 0.5); // tank drive inputs are reversed
+					angle = 0;
+					//angle = gyro.getAngle();
 					System.out.printf("Angle:  %.2f%n", angle);
 				} else {
 					myRobot.tankDrive(0.0, 0.0); 	// stop robot
@@ -154,8 +192,7 @@ public class Robot extends IterativeRobot {
 	    	case 2:
 	    		// drive forward till mark
 	    		distance = encL.getDistance();
-		    	if(distance + autoLoopCounter < 200) //Check if we've completed 100 loops (approximately 2 seconds)
-				{
+		    	if(distance + autoLoopCounter < 200) { //Check if we've completed 100 loops (approximately 2 seconds)
 					myRobot.drive(-0.5, 0.0); 	// drive forwards half speed
 					System.out.println("  Driving forward ");
 					autoLoopCounter++;
@@ -171,7 +208,7 @@ public class Robot extends IterativeRobot {
     }
     
     /**
-     * This function is called once each time the robot enters tele-operated mode
+     * This function is called once each time the robot enters tele-operated mode 
      */
     public void teleopInit(){
     }
@@ -180,7 +217,10 @@ public class Robot extends IterativeRobot {
      * This function is called periodically during operator control
      */
     public void teleopPeriodic() {
-        myRobot.arcadeDrive(stick, true);    //true applies a square to the input values
+    	double moveValue = stick.getY();
+    	double rotateValue = 0.5 * stick.getX();
+    	myRobot.arcadeDrive(moveValue, rotateValue, true);
+        //myRobot.arcadeDrive(stick, true);    //true applies a square to the input values
     }
     
     /**
