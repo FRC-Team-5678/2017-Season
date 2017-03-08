@@ -105,7 +105,7 @@ public class Robot extends IterativeRobot {
         gearLimitSwitch = new DigitalInput(4);
 		myRobot = new RobotDrive(leftMotor,rightMotor);     //myRobot = new RobotDrive(0,1);
     	leftStick = new Joystick(0);
-		//myRobot.setInvertedMotor(RobotDrive.MotorType.kRearLeft, true);  //so that positive motor commands will correspond to the forward direction
+		myRobot.setInvertedMotor(RobotDrive.MotorType.kRearLeft, true);  //so that positive motor commands will correspond to the forward direction
     	myRobot.setInvertedMotor(RobotDrive.MotorType.kRearRight, true);	//so that positive motor commands will correspond to the forward direction													 
 		leftStick = new Joystick(0);
     	rightStick = new Joystick(1);
@@ -313,7 +313,7 @@ public class Robot extends IterativeRobot {
     			currentMotorCommand = calculateEasedMotorCommand(previousMotorCommand, forwardDirection ? leftStick.getY() : -leftStick.getY());
     			switchDirectionLoopCounter++;
     		}
-    		else if (switchDirectionInProgress & (switchDirectionLoopCounter >= 25)){
+    		else if (switchDirectionInProgress & (switchDirectionLoopCounter == 25)){
     			switchDirectionLoopCounter++;
     			myRobot.tankDrive(0, 0);
     			switchDirectionInProgress = false;
