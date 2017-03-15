@@ -65,6 +65,7 @@ public class Robot extends IterativeRobot {
 
 	double throttleScalingConstant = 1;
 	double turnSensitivityConstant = 1;
+	double distanceBeforeApproach = 0;
 	
 	boolean  gearEngaged = false;
 	boolean forwardDirection = false;
@@ -218,6 +219,7 @@ public class Robot extends IterativeRobot {
 						SmartDashboard.putString("state", "auto state 1");
 					} else {
 						myRobot.tankDrive(0.0, 0.0); 	// stop robot
+						distanceBeforeApproach = encL.getDistance();
 						autoState = 2;
 					}
 			    	break;
@@ -231,21 +233,31 @@ public class Robot extends IterativeRobot {
 						System.out.printf("Angle:  %.2f%n", angle);
 					} else {
 						myRobot.tankDrive(0.0, 0.0); 	// stop robot
+						distanceBeforeApproach = encL.getDistance();
 						autoState = 2;
 					}
 			    	break;
 	    		}
 	    		else {
 	    			autoState = 2;
+	    			distanceBeforeApproach = encL.getDistance();
 	    			break;
 	    		}
 	    		
 	    	case 2:
 	    		// drive forward till mark
-	    		distance = encL.getDistance();
+	    		SmartDashboard.putString("state", "auto state 2");
+	    		distance = encL.getDistance(); 
+		    	if(distance < (36 + distanceBeforeApproach)) //Check if we've completed 100 loops (approximately 2 seconds)
+				{
+		    		myRobot.tankDrive(-0.4, -0.4);
+				}
+		    	else{
+		    		myRobot.tankDrive(0, 0);
+		    		SmartDashboard.putString("state", "post auto state 2 stopped");
+		    	}
 	    		
-	    		
-	        	if ((gearLimitSwitch.get() == true) & (gearEngagedLoopCounter < 0) & (distance > 400))  
+	        /*	if ((gearLimitSwitch.get() == true) & (gearEngagedLoopCounter < 0) & (distance > 400))  
 	        	{
 	        		gearEngaged = true;
 	        		SmartDashboard.putBoolean("gear engaged", true);
@@ -262,10 +274,8 @@ public class Robot extends IterativeRobot {
 	        	else if ((gearEngaged == true) & (gearEngagedLoopCounter > 120) & (gearEngagedLoopCounter < 200)){
 	        		myRobot.arcadeDrive(-0.5, 0);  //backup
 	        		gearEngaged = false;
-	        	}
-	        	else{
-	        		
-	        	}
+	        	}*/
+	        	
 	    }
     }
     
