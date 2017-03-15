@@ -47,7 +47,7 @@ public class Robot extends IterativeRobot {
 	
 	double gyroAngleGoalStartingLeft = 60;
 	double gyroAngleGoalStartingRight = -60;
-	double turnPower = .5;
+	double turnPower = .4;
 
 	double distance, distanceL, distanceR;
 	double angle;
@@ -55,7 +55,7 @@ public class Robot extends IterativeRobot {
 	double previousMotorCommand;
     double angleSetpoint = 0.0;
     final double pGain = .006; //propotional turning constant	
-    double maxMotorCommandChange = 0.2;
+    double maxMotorCommandChange = 0.02;
 	
 
 	
@@ -102,6 +102,9 @@ public class Robot extends IterativeRobot {
 		
 		leftMotor = new Spark(0);
         rightMotor = new Spark(1);
+        leftMotor.enableDeadbandElimination(true);
+        rightMotor.enableDeadbandElimination(true);
+        squareJoystickYAxis = true;
         gearLimitSwitch = new DigitalInput(4);
 		myRobot = new RobotDrive(leftMotor,rightMotor);     //myRobot = new RobotDrive(0,1);
     	leftStick = new Joystick(0);
@@ -176,25 +179,27 @@ public class Robot extends IterativeRobot {
     	switch (autoState) {      // where is autoState set?
 	    	case 0:
 	    		// drive forward till mark
-	    		/* distance = encL.getDistance();
+	    		distance = encL.getDistance(); 
 		    	if(distance < 60) //Check if we've completed 100 loops (approximately 2 seconds)
 				{
-					turningValue =  0;
-		            //turningValue =  (angleSetpoint - gyro.getAngle())*pGain;
-	                myRobot.drive(0.25, turningValue);
-					System.out.printf("  Driving forward. Distance: %2f%n", distance);
+					//turningValue =  0;
+		            turningValue =  (angleSetpoint - gyro.getAngle())*pGain;
+	                myRobot.drive(-0.5, turningValue);
+				                                                                                                              	System.out.printf("  Driving forward. Distance: %2f%n", distance);
 					autoLoopCounter++;
 				} else {
 					myRobot.drive(0.0, 0.0); 	// stop robot
 					autoState = 1;
-				} */
+				} 
 	    		
-				distanceL = encL.getDistance();
-	    		distanceR = encR.getDistance();
+				//distanceL = encL.getDistance();
+	    		//distanceR = encR.getDistance();
+	    		SmartDashboard.putNumber("left encoder distance", distanceL);
+	    		//SmartDashboard.putNumber("right encoder distance", distanceR);
 				System.out.printf("  Driving forward. DistanceL: %2f%n", distanceL);
-				System.out.printf("  Driving forward. DistanceR: %2f%n", distanceR);
+				//System.out.printf("  Driving forward. DistanceR: %2f%n", distanceR);
 					autoLoopCounter++;
-					myRobot.tankDrive( (distanceL < 60)? -0.5:0, (distanceL < 60)? -0.5:0 ); 	// stop robot
+					//myRobot.tankDrive( (distanceL < 60)? -0.5:0, (distanceL < 60)? -0.5:0 ); 	// stop robot
 //					myRobot.tankDrive( -0.5, (distanceR < 60)? -0.5:0 ); 	// stop robot	
 				//autoState = 1;
 				
@@ -205,9 +210,12 @@ public class Robot extends IterativeRobot {
 			    	if(angle < 30) //??assume that CW rotation is positive 
 					{
 						System.out.println("  Turning Right ");
-			    		myRobot.tankDrive(turnPower, -turnPower);  //and assume that this is the direction for CW rotation
+			    		myRobot.tankDrive(-turnPower, turnPower);  //and assume that this is the direction for CW rotation
 						angle = gyro.getAngle();
+						SmartDashboard.putNumber("gyro angle", angle); 
 						System.out.printf("Angle:  %.2f%n", angle);
+						SmartDashboard.putNumber("turnPower", turnPower);
+						SmartDashboard.putString("state", "auto state 1");
 					} else {
 						myRobot.tankDrive(0.0, 0.0); 	// stop robot
 						autoState = 2;
@@ -218,7 +226,7 @@ public class Robot extends IterativeRobot {
 	    			if(angle > -30) //this is the case for robot starting on the right, we need to add other cases
 					{
 						System.out.println("  Turning Right ");
-			    		myRobot.tankDrive(-turnPower, turnPower);
+			    		myRobot.tankDrive(turnPower, -turnPower);
 						angle = gyro.getAngle();
 						System.out.printf("Angle:  %.2f%n", angle);
 					} else {
@@ -329,7 +337,7 @@ public class Robot extends IterativeRobot {
     		SmartDashboard.putString("switch direction in progress", switchDirectionInProgress ? "true" : "false");
             SmartDashboard.putString("Calculated Motor Command", Double.toString(currentMotorCommand));   
             SmartDashboard.putString("forward direction", forwardDirection ? "forward" : "reverse");
-            rotateValue = 0.5 * leftStick.getX(); 
+            rotateValue = 0.6 * leftStick.getX(); 
             SmartDashboard.putString("Rotate Value", Double.toString(rotateValue));
             myRobot.arcadeDrive(currentMotorCommand, rotateValue, squareJoystickYAxis);
             previousMotorCommand = currentMotorCommand;
