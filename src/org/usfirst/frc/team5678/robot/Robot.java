@@ -75,6 +75,9 @@ public class Robot extends IterativeRobot {
 	final int waitAftergearEngaged = 120;
 	double gearEngagedLoopCounter;
 	JoystickButton reverseDirectionButton;
+	
+	boolean enableConsolePrint;
+	boolean enableSmartDashboard;
 
 	
 	SendableChooser<String> chooser = new SendableChooser<>();
@@ -119,6 +122,8 @@ public class Robot extends IterativeRobot {
         gyro.calibrate();
         //CameraServer.getInstance().startAutomaticCapture("cam0",0);
         //CameraServer.getInstance().startAutomaticCapture("cam1",1);
+        enableConsolePrint = false;
+    	enableSmartDashboard = false;
         
         
         
@@ -195,7 +200,7 @@ public class Robot extends IterativeRobot {
 	    		
 				//distanceL = encL.getDistance();
 	    		//distanceR = encR.getDistance();
-	    		SmartDashboard.putNumber("left encoder distance", distanceL);
+		    	if (enableSmartDashboard) {SmartDashboard.putNumber("left encoder distance", distanceL);}
 	    		//SmartDashboard.putNumber("right encoder distance", distanceR);
 				//System.out.printf("  Driving forward. DistanceL: %2f%n", distanceL);
 				//System.out.printf("  Driving forward. DistanceR: %2f%n", distanceR);
@@ -213,10 +218,12 @@ public class Robot extends IterativeRobot {
 						//System.out.println("  Turning Right ");
 			    		myRobot.tankDrive(-turnPower, turnPower);  //and assume that this is the direction for CW rotation
 						angle = gyro.getAngle();
-						SmartDashboard.putNumber("gyro angle", angle); 
 						//System.out.printf("Angle:  %.2f%n", angle);
-						SmartDashboard.putNumber("turnPower", turnPower);
-						SmartDashboard.putString("state", "auto state 1");
+						if (enableSmartDashboard) {
+							SmartDashboard.putNumber("gyro angle", angle); 
+							SmartDashboard.putNumber("turnPower", turnPower);
+							SmartDashboard.putString("state", "auto state 1");
+						}   
 					} else {
 						myRobot.tankDrive(0.0, 0.0); 	// stop robot
 						distanceBeforeApproach = encL.getDistance();
@@ -246,7 +253,7 @@ public class Robot extends IterativeRobot {
 	    		
 	    	case 2:
 	    		// drive forward till mark
-	    		SmartDashboard.putString("state", "auto state 2");
+	    		if (enableSmartDashboard) {SmartDashboard.putString("state", "auto state 2");}
 	    		distance = encL.getDistance(); 
 		    	if(distance < (36 + distanceBeforeApproach)) //Check if we've completed 100 loops (approximately 2 seconds)
 				{
@@ -254,7 +261,7 @@ public class Robot extends IterativeRobot {
 				}
 		    	else{
 		    		myRobot.tankDrive(0, 0);
-		    		SmartDashboard.putString("state", "post auto state 2 stopped");
+		    		if (enableSmartDashboard) {SmartDashboard.putString("state", "post auto state 2 stopped");}
 		    	}
 	    		
 	        /*	if ((gearLimitSwitch.get() == true) & (gearEngagedLoopCounter < 0) & (distance > 400))  
@@ -320,9 +327,10 @@ public class Robot extends IterativeRobot {
     	double rotateValue;
     	double moveRValue = 0;
     	
-    	
+    	if (enableSmartDashboard) {
     		SmartDashboard.putString("trigger", leftStick.getTrigger() ? "true" : "false");
     		SmartDashboard.putString("reverse button", reverseDirectionButton.get() ? "true" : "false");
+    	}
     		if ((reverseDirectionButton.get() & switchDirectionInProgress == false)){		
     			switchDirectionInProgress = true;
     			
@@ -351,23 +359,30 @@ public class Robot extends IterativeRobot {
             moveValue = forwardDirection ? moveValue : -moveValue;
             currentMotorCommand = calculateEasedMotorCommand(previousMotorCommand, moveValue);
             }
-    		SmartDashboard.putNumber("switch direction loop counter", switchDirectionLoopCounter);
-    		SmartDashboard.putString("switch direction in progress", switchDirectionInProgress ? "true" : "false");
-            SmartDashboard.putString("Calculated Motor Command", Double.toString(currentMotorCommand));   
-            SmartDashboard.putString("forward direction", forwardDirection ? "forward" : "reverse");
-            rotateValue = 0.7 * leftStick.getX(); 
-            SmartDashboard.putString("Rotate Value", Double.toString(rotateValue));
-            SmartDashboard.putString("useTankDrive", useTankDrive ? "true" : "false");
+    		rotateValue = 0.7 * leftStick.getX(); 
+    		if (enableSmartDashboard) {
+	    		SmartDashboard.putNumber("switch direction loop counter", switchDirectionLoopCounter);
+	    		SmartDashboard.putString("switch direction in progress", switchDirectionInProgress ? "true" : "false");
+	            SmartDashboard.putString("Calculated Motor Command", Double.toString(currentMotorCommand));   
+	            SmartDashboard.putString("forward direction", forwardDirection ? "forward" : "reverse");
+	            SmartDashboard.putString("Rotate Value", Double.toString(rotateValue));
+	            SmartDashboard.putString("useTankDrive", useTankDrive ? "true" : "false");
+    		}
+            
+            
             if (useTankDrive){
             	//moveRValue = rightStick.getY();
-            	SmartDashboard.putString("useTankDrive", useTankDrive ? "true" : "false");
-            	SmartDashboard.putNumber("moveRValue", moveRValue);
+            	if (enableSmartDashboard){
+	            	SmartDashboard.putString("useTankDrive", useTankDrive ? "true" : "false");
+	            	SmartDashboard.putNumber("moveRValue", moveRValue);
+	            	SmartDashboard.putString("state", "teleop tank drive");
+	            	}
             	moveRValue = forwardDirection ? moveRValue : -moveRValue;
             	myRobot.tankDrive(moveValue, moveRValue);
-            	SmartDashboard.putString("state", "teleop tank drive");
+            	
             }
             else{
-            	SmartDashboard.putString("state", "teleop arcade drive");
+            	if (enableSmartDashboard) {SmartDashboard.putString("state", "teleop arcade drive");}
             	myRobot.arcadeDrive(currentMotorCommand, rotateValue, squareJoystickYAxis);
             }
             
