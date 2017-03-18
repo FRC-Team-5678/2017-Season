@@ -27,7 +27,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  */
 public class Robot extends IterativeRobot {
 	RobotDrive myRobot;
-	Joystick leftStick, rightStick;
+	Joystick leftStick; //, rightStick;
 	Spark leftMotor, rightMotor;						 
 	Encoder encL, encR;
 	DigitalInput gearLimitSwitch;
@@ -54,16 +54,14 @@ public class Robot extends IterativeRobot {
 	double turningValue;
 	double previousMotorCommand;
     double angleSetpoint = 0.0;
-    final double pGain = .006; //proportional turning constant	
-    double maxMotorCommandChange = 0.02;
+    final double pGain = .006; //propotional turning constant	
+    double maxMotorCommandChange = 0.05;
 	
 
 	
 	
 	boolean squareJoystickYAxis = false;
-	boolean useTankDrive = true;
-	double loopCounterGearPlaced;
-	boolean backupAfterGearPlacedComplete = false;
+	boolean useTankDrive = false;
 
 	double throttleScalingConstant = 1;
 	double turnSensitivityConstant = 1;
@@ -90,9 +88,9 @@ public class Robot extends IterativeRobot {
      * used for any initialization code.
      */
     public void robotInit() {
-		chooser.addDefault("Default Auto", defaultAuto);
-		chooser.addObject("My Auto", customAuto);
-		SmartDashboard.putData("Auto choices", chooser);
+		//chooser.addDefault("Default Auto", defaultAuto);
+		//chooser.addObject("My Auto", customAuto);
+		//SmartDashboard.putData("Auto choices", chooser);
 		
 		boilerPositionChooser.addDefault("Boiler to the Left", boilerToTheLeft);
 		boilerPositionChooser.addObject("Boiler to the right", boilerToTheRight);
@@ -112,15 +110,15 @@ public class Robot extends IterativeRobot {
 		myRobot = new RobotDrive(leftMotor,rightMotor);     //myRobot = new RobotDrive(0,1);
 		myRobot.setInvertedMotor(RobotDrive.MotorType.kRearLeft, true);  //so that positive motor commands will correspond to the forward direction
     	myRobot.setInvertedMotor(RobotDrive.MotorType.kRearRight, true);	//so that positive motor commands will correspond to the forward direction													 
-		leftStick = new Joystick(1);
-    	rightStick = new Joystick(0);
-    	reverseDirectionButton = new JoystickButton(rightStick,2);
+		leftStick = new Joystick(0);
+    	//rightStick = new Joystick(0);
+    	reverseDirectionButton = new JoystickButton(leftStick,2);
     	encL = new Encoder(0, 1, false, Encoder.EncodingType.k2X);
     	encR = new Encoder(2, 3, false, Encoder.EncodingType.k2X);
         gyro = new ADXRS450_Gyro(); 
         gyro.calibrate();
-        CameraServer.getInstance().startAutomaticCapture("cam0",0);
-        CameraServer.getInstance().startAutomaticCapture("cam1",1);
+        //CameraServer.getInstance().startAutomaticCapture("cam0",0);
+        //CameraServer.getInstance().startAutomaticCapture("cam1",1);
         
         
         
@@ -130,7 +128,7 @@ public class Robot extends IterativeRobot {
      * This function is run once each time the robot enters autonomous mode
      */
     public void autonomousInit() {
-    	System.out.println("Autonomous Init: ==============================");
+    	//System.out.println("Autonomous Init: ==============================");
     	gyro.reset();
     	autoLoopCounter = 0;
     	autoState = 0;
@@ -158,81 +156,40 @@ public class Robot extends IterativeRobot {
 		//boilerPosition = boilerPositionChooser.getSelected();
 		// autoSelected = SmartDashboard.getString("Auto Selector",
 		// defaultAuto);
-		System.out.println("Auto selected: " + autoSelected);
+		//System.out.println("Auto selected: " + autoSelected);
 		robotPositionChooser.addDefault("Robot on the Left", robotStartingOnLeft);
     	
     	
     }
 
-    
-    public void turnInPlace(double angleGoal, boolean turnRight){  //positive 
-    	double angle = gyro.getAngle();
-    	if (turnRight){
-    		if(angle < angleGoal) // CW rotation will increase value of angle
-    		{
-    			System.out.println("  Turning Right ");
-        		myRobot.tankDrive(-turnPower, turnPower);  //and assume that this is the direction for CW rotation
-    			angle = gyro.getAngle();
-    			SmartDashboard.putNumber("gyro angle", angle); 
-    			System.out.printf("Angle:  %.2f%n", angle);
-    			SmartDashboard.putNumber("turnPower", turnPower);
-    			SmartDashboard.putString("state", "turn in place right");
-    			
-    		} else {
-    			myRobot.tankDrive(0.0, 0.0); 	// stop robot
-    			SmartDashboard.putString("state", "stop after turn in place ");
-    			
-    		}
-    	}
-    	else{
-    		if(angle > angleGoal) //left turn is CCW rotation - angle is decreasing and is negative
-    		{
-    			System.out.println("  Turning Left ");
-        		myRobot.tankDrive(turnPower, -turnPower);  //and assume that this is the direction for CW rotation
-    			angle = gyro.getAngle();
-    			SmartDashboard.putNumber("gyro angle", angle); 
-    			System.out.printf("Angle:  %.2f%n", angle);
-    			SmartDashboard.putNumber("turnPower", turnPower);
-    			SmartDashboard.putString("state", "turn in place left");
-    		} else {
-    			myRobot.tankDrive(0.0, 0.0); 	// stop robot
-    			SmartDashboard.putString("state", "stop after turn in place left ");
-    			
-    		}
-    	}
-    	
-    }
     /**
      * This function is called periodically during autonomous
      */
     public void autonomousPeriodic() {
-    	double driveForwardDistance;
-    	double turnAngle;
     	switch (robotPosition) {
 			case robotStartingOnLeft:
-				System.out.printf("  Robot Starting on Left ");
+				//System.out.printf("  Robot Starting on Left ");
 				break;
 			case robotStartingOnCenter:
-				System.out.printf("  Robot Starting at Center ");
+				//System.out.printf("  Robot Starting at Center ");
 				break;
 			case robotStartingOnRight:
-				System.out.printf("  Robot Starting on Right ");
+				//System.out.printf("  Robot Starting on Right ");
 				break;
     	}
-    	switch (autoState) {     
+    	switch (autoState) {      // where is autoState set?
 	    	case 0:
 	    		// drive forward till mark
 	    		distance = encL.getDistance(); 
-	    	    driveForwardDistance = (robotPosition == robotStartingOnCenter)? 62 : 60;
-		    	if(distance < driveForwardDistance) 
+		    	if(distance < 60) //Check if we've completed 100 loops (approximately 2 seconds)
 				{
+					//turningValue =  0;
 		            turningValue =  (angleSetpoint - gyro.getAngle())*pGain;
 	                myRobot.drive(-0.5, turningValue);
-				                                                                                                              	System.out.printf("  Driving forward. Distance: %2f%n", distance);
-					//autoLoopCounter++;
+				    //System.out.printf("  Driving forward. Distance: %2f%n", distance);
+					autoLoopCounter++;
 				} else {
 					myRobot.drive(0.0, 0.0); 	// stop robot
-					loopCounterGearPlaced = 0;
 					autoState = 1;
 				} 
 	    		
@@ -240,7 +197,7 @@ public class Robot extends IterativeRobot {
 	    		//distanceR = encR.getDistance();
 	    		SmartDashboard.putNumber("left encoder distance", distanceL);
 	    		//SmartDashboard.putNumber("right encoder distance", distanceR);
-				System.out.printf("  Driving forward. DistanceL: %2f%n", distanceL);
+				//System.out.printf("  Driving forward. DistanceL: %2f%n", distanceL);
 				//System.out.printf("  Driving forward. DistanceR: %2f%n", distanceR);
 					autoLoopCounter++;
 					//myRobot.tankDrive( (distanceL < 60)? -0.5:0, (distanceL < 60)? -0.5:0 ); 	// stop robot
@@ -250,106 +207,55 @@ public class Robot extends IterativeRobot {
 		    	break;
 	    	case 1:
 	    		if (robotPosition == robotStartingOnLeft){
-	    			turnInPlace(30, true);
-	    			distanceBeforeApproach = encL.getDistance();  //?? better to reset encoder??
-	    			autoState = 2;
-			    	break;    // not necessary
-	    		}
-	    		else if (robotPosition == robotStartingOnRight){
-	    			turnInPlace(-30, false);
-					distanceBeforeApproach = encL.getDistance();
-					autoState = 2;
-					}
-	    		break;  //necessary?  In C it is necessary
-	    		
-	    	case 2:
-	    		// just for robots starting on the sides:  approach the gear peg
-	    		if (!(robotPosition == robotStartingOnCenter)){
-	    			SmartDashboard.putString("state", "auto state 2");
-		    		distance = encL.getDistance(); 
-			    	if(distance < (36 + distanceBeforeApproach)) 
+	    			angle = gyro.getAngle();
+			    	if(angle < 30) //??assume that CW rotation is positive 
 					{
-			    		myRobot.tankDrive(-0.4, -0.4);
-					}
-			    	else{
-			    		myRobot.tankDrive(0, 0);
-			    		SmartDashboard.putString("state", "post auto state 2 stopped");
-			    		autoState = 3;
-			    		break;
-			    	}
-	    		}
-	    		else{  //center position: wait for several seconds for gear to be retrieved
-	    			if (loopCounterGearPlaced < 250 ){
-	    				loopCounterGearPlaced++;	
-	    				SmartDashboard.putString("state", "waiting for gear");
-	    			}
-	    			else  //reverse direction 
-	    			{
-	    				distance = encL.getDistance(); 
-	    				if ((!backupAfterGearPlacedComplete) & (distance > 14)){
-	    					myRobot.tankDrive(0.4, 0.4);
-	    					SmartDashboard.putString("state", "backing up");
-	    					SmartDashboard.putNumber("distance", distance);
-	    				}
-	    				else{
-	    					myRobot.tankDrive(0, 0);
-	    					backupAfterGearPlacedComplete = true;
-	    					SmartDashboard.putString("state", "stopped after backing up");
-	    					SmartDashboard.putNumber("distance", distance);
-	    					autoState = 3;
-	    					break;  //unnecessary
-	    				}
-	    				
-	    			}
-	    			break;  //unnecessary
-	    			
-	    		}
-	    		break;
-	    	case 3:
-	    		if (boilerPosition == boilerToTheRight){
-	    			turnInPlace(-90, false);
-					autoState = 4;
-					encL.reset();
-					}
-	    		else
-	    		{
-	    			turnInPlace(90, true);
-	    			autoState = 4;
-					encL.reset();
+						//System.out.println("  Turning Right ");
+			    		myRobot.tankDrive(-turnPower, turnPower);  //and assume that this is the direction for CW rotation
+						angle = gyro.getAngle();
+						SmartDashboard.putNumber("gyro angle", angle); 
+						//System.out.printf("Angle:  %.2f%n", angle);
+						SmartDashboard.putNumber("turnPower", turnPower);
+						SmartDashboard.putString("state", "auto state 1");
+					} else {
+						myRobot.tankDrive(0.0, 0.0); 	// stop robot
+						distanceBeforeApproach = encL.getDistance();
+						autoState = 2;
 					}
 			    	break;
-	    	case 4:
-	    		distance = encL.getDistance(); 
-				if (distance < 96){
-					myRobot.tankDrive(-0.4, -0.4);
-					SmartDashboard.putString("state", "moving sideways");
-					SmartDashboard.putNumber("distance", distance);
-				}
-				else{
-					myRobot.tankDrive(0, 0);
-					SmartDashboard.putString("state", "stopped after moving sideways");
-					SmartDashboard.putNumber("distance", distance);
-					autoState = 5;
-					break;
-				}
-	    	case 5:
-	    		if (boilerPosition == boilerToTheLeft){
-	    			turnInPlace(-90, false);
-	    			autoState = 6;
-					}
-	    		else
-	    		{
-	    			turnInPlace(90, true);
-					autoState = 6;
 	    		}
-	    	case 6:
-	    		myRobot.tankDrive(-0.4, -0.4);
-	    		break;
-				
+	    		else if (robotPosition == robotStartingOnRight){
+	    			if(angle > -30) //this is the case for robot starting on the right, we need to add other cases
+					{
+						//System.out.println("  Turning Right ");
+			    		myRobot.tankDrive(turnPower, -turnPower);
+						angle = gyro.getAngle();
+						//System.out.printf("Angle:  %.2f%n", angle);
+					} else {
+						myRobot.tankDrive(0.0, 0.0); 	// stop robot
+						distanceBeforeApproach = encL.getDistance();
+						autoState = 2;
+					}
+			    	break;
+	    		}
+	    		else {
+	    			autoState = 2;
+	    			distanceBeforeApproach = encL.getDistance();
+	    			break;
+	    		}
 	    		
-	    		
-	    		
-	    		
+	    	case 2:
+	    		// drive forward till mark
+	    		SmartDashboard.putString("state", "auto state 2");
+	    		distance = encL.getDistance(); 
+		    	if(distance < (36 + distanceBeforeApproach)) //Check if we've completed 100 loops (approximately 2 seconds)
+				{
+		    		myRobot.tankDrive(-0.4, -0.4);
+				}
+		    	else{
+		    		myRobot.tankDrive(0, 0);
+		    		SmartDashboard.putString("state", "post auto state 2 stopped");
+		    	}
 	    		
 	        /*	if ((gearLimitSwitch.get() == true) & (gearEngagedLoopCounter < 0) & (distance > 400))  
 	        	{
@@ -379,10 +285,10 @@ public class Robot extends IterativeRobot {
     public void teleopInit(){
     	switchDirectionLoopCounter = -1;
     	forwardDirection = true;
-    	CameraServer.getInstance().startAutomaticCapture("cam0",0);
-    	CameraServer.getInstance().startAutomaticCapture("cam1",1);
+    	//CameraServer.getInstance().startAutomaticCapture("cam0",0);
+    	//Server.getInstance().startAutomaticCapture("cam1",1);
     	squareJoystickYAxis = true;
-    	useTankDrive = true;
+    	useTankDrive = false;
 
     	throttleScalingConstant = 1;
     	turnSensitivityConstant = 1;
@@ -434,10 +340,10 @@ public class Robot extends IterativeRobot {
     			switchDirectionInProgress = false;
     			forwardDirection = forwardDirection ? false: true;
     			//CameraServer.getInstance().
-    			CameraServer.getInstance().removeCamera("cam0");
-    			CameraServer.getInstance().removeCamera("cam1");
-    			CameraServer.getInstance().startAutomaticCapture("cam0",forwardDirection ? 0 : 1);
-    			CameraServer.getInstance().startAutomaticCapture("cam1",forwardDirection ? 1 : 0);
+    			//CameraServer.getInstance().removeCamera("forward");
+    			//CameraServer.getInstance().removeCamera("backward");
+    			//Server.getInstance().startAutomaticCapture("forward",forwardDirection ? 0 : 1);
+    			//CameraServer.getInstance().startAutomaticCapture("backward",forwardDirection ? 1 : 0);
     			
     		}
     		else{   		
@@ -449,16 +355,19 @@ public class Robot extends IterativeRobot {
     		SmartDashboard.putString("switch direction in progress", switchDirectionInProgress ? "true" : "false");
             SmartDashboard.putString("Calculated Motor Command", Double.toString(currentMotorCommand));   
             SmartDashboard.putString("forward direction", forwardDirection ? "forward" : "reverse");
-            rotateValue = 0.6 * leftStick.getX(); 
+            rotateValue = 0.7 * leftStick.getX(); 
             SmartDashboard.putString("Rotate Value", Double.toString(rotateValue));
+            SmartDashboard.putString("useTankDrive", useTankDrive ? "true" : "false");
             if (useTankDrive){
-            	moveRValue = rightStick.getY();
-            	SmartDashboard.putString("useTankDrive", "useTankDrive");
+            	//moveRValue = rightStick.getY();
+            	SmartDashboard.putString("useTankDrive", useTankDrive ? "true" : "false");
             	SmartDashboard.putNumber("moveRValue", moveRValue);
             	moveRValue = forwardDirection ? moveRValue : -moveRValue;
             	myRobot.tankDrive(moveValue, moveRValue);
+            	SmartDashboard.putString("state", "teleop tank drive");
             }
             else{
+            	SmartDashboard.putString("state", "teleop arcade drive");
             	myRobot.arcadeDrive(currentMotorCommand, rotateValue, squareJoystickYAxis);
             }
             
@@ -472,6 +381,6 @@ public class Robot extends IterativeRobot {
      */
     public void testPeriodic() {
 //	    	LiveWindow.run();
-    }
+    } 
     
 }
