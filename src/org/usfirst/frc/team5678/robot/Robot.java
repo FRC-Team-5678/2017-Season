@@ -54,7 +54,7 @@ public class Robot extends IterativeRobot {
 	double turningValue;
 	double previousMotorCommand;
     double angleSetpoint = 0.0;
-    final double pGain = .006; //propotional turning constant	
+    final double pGain = .006; //proportional turning constant	
     double maxMotorCommandChange = 0.05;
 	
 
@@ -67,7 +67,7 @@ public class Robot extends IterativeRobot {
 	double turnSensitivityConstant = 1;
 	double distanceBeforeApproach = 0;
 	
-	boolean  gearEngaged = false;
+	
 	boolean forwardDirection = false;
 	double gradualStopPower;
 	boolean switchDirectionInProgress = false;
@@ -76,8 +76,8 @@ public class Robot extends IterativeRobot {
 	double gearEngagedLoopCounter;
 	JoystickButton reverseDirectionButton;
 	
-	boolean enableConsolePrint;
-	boolean enableSmartDashboard;
+	boolean enableConsolePrint = true;
+	boolean enableSmartDashboard = true;
 
 	
 	SendableChooser<String> chooser = new SendableChooser<>();
@@ -94,16 +94,16 @@ public class Robot extends IterativeRobot {
 		//chooser.addDefault("Default Auto", defaultAuto);
 		//chooser.addObject("My Auto", customAuto);
 		//SmartDashboard.putData("Auto choices", chooser);
-		
-		boilerPositionChooser.addDefault("Boiler to the Left", boilerToTheLeft);
-		boilerPositionChooser.addObject("Boiler to the right", boilerToTheRight);
-		SmartDashboard.putData("Boiler Position", boilerPositionChooser);
-		
-		robotPositionChooser.addDefault("Robot on the Left", robotStartingOnLeft);
-		robotPositionChooser.addObject("Robot at Center", robotStartingOnCenter);
-		robotPositionChooser.addObject("Robot on the Right", robotStartingOnRight);
-		SmartDashboard.putData("Robot Position", robotPositionChooser);
-		
+    	if (enableSmartDashboard) {
+			boilerPositionChooser.addDefault("Boiler to the Left", boilerToTheLeft);
+			boilerPositionChooser.addObject("Boiler to the right", boilerToTheRight);
+			SmartDashboard.putData("Boiler Position", boilerPositionChooser);
+			
+			robotPositionChooser.addDefault("Robot on the Left", robotStartingOnLeft);
+			robotPositionChooser.addObject("Robot at Center", robotStartingOnCenter);
+			robotPositionChooser.addObject("Robot on the Right", robotStartingOnRight);
+			SmartDashboard.putData("Robot Position", robotPositionChooser);
+    	}
 		leftMotor = new Spark(0);
         rightMotor = new Spark(1);
         leftMotor.enableDeadbandElimination(true);
@@ -123,7 +123,7 @@ public class Robot extends IterativeRobot {
         //CameraServer.getInstance().startAutomaticCapture("cam0",0);
         //CameraServer.getInstance().startAutomaticCapture("cam1",1);
         enableConsolePrint = false;
-    	enableSmartDashboard = false;
+    	enableSmartDashboard = true;
         
         
         
@@ -131,7 +131,7 @@ public class Robot extends IterativeRobot {
     
     /**
      * This function is run once each time the robot enters autonomous mode
-     */
+     */ 
     public void autonomousInit() {
     	//System.out.println("Autonomous Init: ==============================");
     	gyro.reset();
@@ -156,13 +156,14 @@ public class Robot extends IterativeRobot {
 		encR.setSamplesToAverage (7);
     	encR.reset();
 
-		autoSelected = chooser.getSelected();
-		robotPosition = robotPositionChooser.getSelected();
+    	//if (enableSmartDashboard) {autoSelected = chooser.getSelected();}
+    	if (enableSmartDashboard) {robotPosition = robotPositionChooser.getSelected();}
+    	else {robotPosition = robotStartingOnLeft;}
 		//boilerPosition = boilerPositionChooser.getSelected();
 		// autoSelected = SmartDashboard.getString("Auto Selector",
 		// defaultAuto);
-		//System.out.println("Auto selected: " + autoSelected);
-		robotPositionChooser.addDefault("Robot on the Left", robotStartingOnLeft);
+		if (enableConsolePrint) {System.out.println("Auto selected: " + autoSelected);}
+		if (enableSmartDashboard) {robotPositionChooser.addDefault("Robot on the Left", robotStartingOnLeft);}
     	
     	
     }
@@ -173,13 +174,13 @@ public class Robot extends IterativeRobot {
     public void autonomousPeriodic() {
     	switch (robotPosition) {
 			case robotStartingOnLeft:
-				//System.out.printf("  Robot Starting on Left ");
+				if (enableConsolePrint) {System.out.printf("  Robot Starting on Left ");}
 				break;
 			case robotStartingOnCenter:
-				//System.out.printf("  Robot Starting at Center ");
+				if (enableConsolePrint) {System.out.printf("  Robot Starting at Center ");}
 				break;
 			case robotStartingOnRight:
-				//System.out.printf("  Robot Starting on Right ");
+				if (enableConsolePrint) {System.out.printf("  Robot Starting on Right ");}
 				break;
     	}
     	switch (autoState) {      // where is autoState set?
@@ -191,7 +192,7 @@ public class Robot extends IterativeRobot {
 					//turningValue =  0;
 		            turningValue =  (angleSetpoint - gyro.getAngle())*pGain;
 	                myRobot.drive(-0.5, turningValue);
-				    //System.out.printf("  Driving forward. Distance: %2f%n", distance);
+	                if (enableConsolePrint) {System.out.printf("  Driving forward. Distance: %2f%n", distance);}
 					autoLoopCounter++;
 				} else {
 					myRobot.drive(0.0, 0.0); 	// stop robot
@@ -215,10 +216,10 @@ public class Robot extends IterativeRobot {
 	    			angle = gyro.getAngle();
 			    	if(angle < 30) //??assume that CW rotation is positive 
 					{
-						//System.out.println("  Turning Right ");
+			    		if (enableConsolePrint) {System.out.println("  Turning Right ");}
 			    		myRobot.tankDrive(-turnPower, turnPower);  //and assume that this is the direction for CW rotation
 						angle = gyro.getAngle();
-						//System.out.printf("Angle:  %.2f%n", angle);
+						if (enableConsolePrint) {System.out.printf("Angle:  %.2f%n", angle);}
 						if (enableSmartDashboard) {
 							SmartDashboard.putNumber("gyro angle", angle); 
 							SmartDashboard.putNumber("turnPower", turnPower);
@@ -234,10 +235,10 @@ public class Robot extends IterativeRobot {
 	    		else if (robotPosition == robotStartingOnRight){
 	    			if(angle > -30) //this is the case for robot starting on the right, we need to add other cases
 					{
-						//System.out.println("  Turning Right ");
+	    				if (enableConsolePrint) {System.out.println("  Turning Right ");}
 			    		myRobot.tankDrive(turnPower, -turnPower);
 						angle = gyro.getAngle();
-						//System.out.printf("Angle:  %.2f%n", angle);
+						if (enableConsolePrint) {System.out.printf("Angle:  %.2f%n", angle);}
 					} else {
 						myRobot.tankDrive(0.0, 0.0); 	// stop robot
 						distanceBeforeApproach = encL.getDistance();
@@ -300,7 +301,7 @@ public class Robot extends IterativeRobot {
     	throttleScalingConstant = 1;
     	turnSensitivityConstant = 1;
     	
-    	gearEngaged = false;
+    	//gearEngaged = false;
     	forwardDirection = true;
     	switchDirectionInProgress = false;
 
